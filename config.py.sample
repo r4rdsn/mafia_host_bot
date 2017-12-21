@@ -1,0 +1,12 @@
+TOKEN = '782171936:cNOEzw8p1Es6pERAfMs5GMnvKQy4IETdgeY'
+ADMIN_ID = 34651378
+PLAYERS_COUNT_TO_START = 4
+REQUEST_OVERDUE_TIME = 60 * 10
+SERVER_IP = '216.239.32.68'
+SERVER_PORT = 80
+SSL_CERT = '/root/cert/PUBLIC.pem'
+SSL_PRIV = '/root/cert/PRIVATE.key'
+IP_RANGE = ['149.154.167.{}'.format(i) for i in range(197, 234)]  # https://core.telegram.org/bots/webhooks
+
+import logging
+LOGGER_LEVEL = logging.DEBUG
