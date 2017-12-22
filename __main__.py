@@ -567,7 +567,8 @@ def callback_inline(call):
         victim = int(re.match(r"(\d+)\. .*", call.message.text).group(1)) - 1
         database.games.update_one(
             {'_id': player_game['_id']},
-            {'$addToSet': {'played': call.from_user.id, 'shots': victim}}
+            {'$addToSet': {'played': call.from_user.id},
+             '$push': {'shots': victim}}
         )
 
         bot.answer_callback_query(

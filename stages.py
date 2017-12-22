@@ -214,9 +214,9 @@ def shooting(game):
             callback_data="shot"
         )
     )
-    for player in range(1, len(game['players']) + 1):
+    for i, player in enumerate(game['players']):
         bot.edit_message_text(
-            f"{player}. {game['players'][player - 1]['name']}",
+            f"{i+1}. {player['name']}",
             chat_id=game['chat'],
             message_id=game['message_id'],
             reply_markup=keyboard
@@ -278,7 +278,7 @@ def last_words_victim(game):
     update_dict = {'$set': {'shots': []}}
 
     mafia_shot = False
-    if len(game['shots']) == 1:
+    if len(set(game['shots'])) == 1 and len(game['shots']) == sum(p['role'] == 'mafia' and p['alive'] for p in game['players']):
         victim = game['shots'][0]
         if game['players'][victim]['alive']:
             mafia_shot = True
