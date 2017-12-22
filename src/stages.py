@@ -14,10 +14,10 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-import repl
-from bot import bot
-from db import database
-from game_config import role_titles
+from . import repl
+from .bot import bot
+from .db import database
+from .game_config import role_titles
 
 from time import time, sleep
 from threading import Thread
