@@ -18,6 +18,7 @@ import config
 from .logger import logger, log_update
 from .db import database
 from . import repl
+from . import croco
 from .game_config import role_titles
 from .stages import stages, go_to_next_stage, format_roles, get_votes
 from .bot import bot
@@ -29,6 +30,7 @@ import flask
 import random
 from time import time
 from uuid import uuid4
+from os.path import getsize
 from threading import Thread
 from pymongo.collection import ReturnDocument
 
@@ -54,6 +56,54 @@ def start_command(message):
 Я умею создавать игры в мафию в группах и супергруппах.
 По всем вопросам пишите на https://t.me/r4rdsn"""
     bot.send_message(message.chat.id, answer)
+
+
+@bot.message_handler(
+    commands=["croco"]
+)
+def play_croco(message):
+    if database.croco.find_one({"chat": message.chat.id}):
+        bot.send_message(message.chat.id, "Игра в этом чате уже идёт.")
+        return
+    word = croco.get_word()
+    id = str(uuid4())[:8]
+    keyboard = InlineKeyboardMarkup()
+    keyboard.add(
+        InlineKeyboardButton(
+            text="Получить слово",
+            callback_data=f"get_word {id}"
+        )
+    )
+    name = get_name(message.from_user)
+    database.croco.insert_one({
+        "id": id,
+        "player": message.from_user.id,
+        "name": name,
+        "word": word,
+        "chat": message.chat.id,
+        "time": time() + 60,
+        "stage": 0
+    })
+    bot.send_message(message.chat.id, f"Игра началась! {name.capitalize()}, у тебя есть две минуты, чтобы объяснить слово.", reply_markup=keyboard)
+
+
+@bot.callback_query_handler(
+    func=lambda call: call.data.startswith("get_word")
+)
+def get_word(call):
+    game = database.croco.find_one({"id": call.data.split()[1], "player": call.from_user.id})
+    if game:
+        bot.answer_callback_query(
+            callback_query_id=call.id,
+            show_alert=True,
+            text=f"Твоё слово: {game['word']}."
+        )
+    else:
+        bot.answer_callback_query(
+	    callback_query_id=call.id,
+            show_alert=False,
+            text="Ты не можешь получить слово для этой игры."
+        )
 
 
 @bot.callback_query_handler(
@@ -619,6 +669,15 @@ def night_speak(message):
             delete = True
         if delete:
             bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+        return
+
+    game = database.croco.find_one({"chat": message.chat.id})
+    if game and re.search(r'\b{}\b'.format(game['word']), message.text.lower()):
+        if message.from_user.id == game["player"]:
+            bot.reply_to(message, "Игра окончена! Нельзя самому называть слово!")
+        else:
+            bot.reply_to(message, "Игра окончена! Это верное слово!")
+        database.croco.delete_one({"_id": game["_id"]})
 
 
 @bot.message_handler(func=lambda message: message.chat.type == "private")
@@ -661,6 +720,19 @@ def stage_cycle():
             game = go_to_next_stage(game)
 
 
+def croco_cycle():
+    while True:
+        curtime = time()
+        games = list(database.croco.find({"time": {"$lte": curtime}}))
+        for game in games:
+            if game["stage"] == 0:
+                database.croco.update_one({"_id": game["_id"]}, {"$set": {"stage": 1, "time": curtime + 60}})
+                bot.send_message(game["chat"], f"{game['name'].capitalize()}, до конца игры осталась минута!")
+            else:
+                database.croco.delete_one({"_id": game["_id"]})
+                bot.send_message(game["chat"], f"Игра окончена! {game['name'].capitalize()} проигрывает, загаданное слово было {game['word']}.")
+
+
 def start_thread(name=None, target=None, *args, daemon=True, **kwargs):
     thread = Thread(*args, name=name, target=target, daemon=daemon, **kwargs)
     logger.debug(f'Запускаю процесс <{thread.name}>')
@@ -691,6 +763,7 @@ def webhook():
 def main():
     start_thread("Stage Cycle", stage_cycle)
     start_thread("Removing Requests", remove_overtimed_requests)
+    start_thread("Crocodile Cycle", croco_cycle)
 
     bot.remove_webhook()
     url = 'https://{}:{}/'.format(config.SERVER_IP, config.SERVER_PORT)
