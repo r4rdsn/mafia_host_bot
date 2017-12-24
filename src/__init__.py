@@ -1,3 +1,4 @@
+
 # Copyright (C) 2017  alfred richardsn
 #
 # This program is free software: you can redistribute it and/or modify
@@ -46,14 +47,15 @@ def user_object(user):
 
 @bot.message_handler(
     func=lambda message: message.chat.type == "private",
-    commands=["start"]
+    commands=["start", "help"]
 )
 @bot.message_handler(
-    commands=["help"]
+    regexp=f"/help@{bot.get_me().username}"
 )
 def start_command(message):
     answer = f"""Привет, я {bot.get_me().first_name}!
 Я умею создавать игры в мафию в группах и супергруппах.
+Инструкция и исходный код: https://github.com/r4rdsn/mafia_host_bot
 По всем вопросам пишите на https://t.me/r4rdsn"""
     bot.send_message(message.chat.id, answer)
 
@@ -501,7 +503,7 @@ def request_interact(call):
 
 @bot.message_handler(
     func=lambda message: message.chat.type in ("group", "supergroup"),
-    commands=["create"]
+    regexp=f"^/create@{bot.get_me().username}$"
 )
 def create(message):
     keyboard = InlineKeyboardMarkup()
@@ -530,7 +532,7 @@ def create(message):
 
 @bot.message_handler(
     func=lambda message: message.chat.type in ("group", "supergroup"),
-    commands=["start"]
+    regexp=f"^/start@{bot.get_me().username}$"
 )
 def start_game(message):
     req = database.requests.find_and_modify(
@@ -587,7 +589,7 @@ def start_game(message):
 
 @bot.message_handler(
     func=lambda message: message.chat.type in ("group", "supergroup"),
-    commands=["cancel"]
+    regexp=f"^/cancel@{bot.get_me().username}$"
 )
 def cancel(message):
     req = database.requests.delete_one(
@@ -672,17 +674,12 @@ def night_speak(message):
         return
 
     game = database.croco.find_one({"chat": message.chat.id})
-    if game and re.search(r'\b{}\b'.format(game['word']), message.text.lower()):
+    if game and re.search(r'\b{}\b'.format(game['word']), message.text.lower().replace('ё', 'е')):
         if message.from_user.id == game["player"]:
             bot.reply_to(message, "Игра окончена! Нельзя самому называть слово!")
         else:
             bot.reply_to(message, "Игра окончена! Это верное слово!")
         database.croco.delete_one({"_id": game["_id"]})
-
-
-@bot.message_handler(func=lambda message: message.chat.type == "private")
-def other_command(message):
-    bot.send_message(message.chat.id, "Команда неизвестна.")
 
 
 def remove_overtimed_requests():
