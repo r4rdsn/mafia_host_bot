@@ -278,7 +278,7 @@ def last_words_victim(game):
     update_dict = {'$set': {'shots': []}}
 
     mafia_shot = False
-    if len(set(game['shots'])) == 1 and len(game['shots']) == sum(p['role'] == 'mafia' and p['alive'] for p in game['players']):
+    if len(set(game['shots'])) == 1 and len(game['shots']) == sum(p['role'] in ('don', 'mafia') and p['alive'] for p in game['players']):
         victim = game['shots'][0]
         if game['players'][victim]['alive']:
             mafia_shot = True
