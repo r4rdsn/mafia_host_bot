@@ -666,7 +666,7 @@ def night_speak(message):
             victim = game.get('victim')
             if victim is not None and victim != message.from_user.id:
                 delete = True
-        elif not player['alive'] or game['stage'] not in (0, -4):
+        elif not player.get('alive', True) or game['stage'] not in (0, -4):
             delete = True
         if delete:
             bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
