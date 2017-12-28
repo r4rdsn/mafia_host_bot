@@ -38,11 +38,14 @@ def add_stage(number, time):
 def go_to_next_stage(game, inc=1):
     stage_number = 0 if game['stage'] == max(stages.keys()) + 1 - inc else game['stage'] + inc
     stage = stages[stage_number]
+    time_inc = stage['time'](game) if callable(stage['time']) else stage['time']
+
     new_game = database.games.find_one_and_update(
         {'_id': game['_id']},
-        {'$set': {'next_stage_time': time() + stage['time'],
-                  'stage': stage_number,
-                  'played': []},
+        {'$set': {
+            'next_stage_time': time() + (time_inc if isinstance(time_inc, (int, float)) else 0),
+            'stage': stage_number,
+            'played': []},
          '$inc': {'day_count': int(stage_number == 0)}},
         return_document=ReturnDocument.AFTER
     )
@@ -121,7 +124,7 @@ def get_order(game):
     )
 
 
-@add_stage(0, 180)
+@add_stage(0, lambda g: 90 + max(0, sum(p['alive'] for p in g['players']) - 4) * 35)
 def discussion(game):
     if game['day_count'] > 1 and game.get('victim') is None:
         bot.edit_message_text(
@@ -215,15 +218,14 @@ def shooting(game):
         )
     )
     for i, player in enumerate(game['players']):
-        bot.edit_message_text(
-            f"{i+1}. {player['name']}",
-            chat_id=game['chat'],
-            message_id=game['message_id'],
-            reply_markup=keyboard
-        )
-        sleep(1)
-
-    go_to_next_stage(game)
+        if player['alive']:
+            bot.edit_message_text(
+                f"{i+1}. {player['name']}",
+                chat_id=game['chat'],
+                message_id=game['message_id'],
+                reply_markup=keyboard
+            )
+            sleep(1)
 
 
 @add_stage(3, 5)
@@ -232,12 +234,12 @@ def night(game):
     database.games.update_one({'_id': game['_id']}, {'$unset': {'victim': True}, '$set': {'message_id': message_id}})
 
 
-@add_stage(4, 30)
+@add_stage(4, lambda g: sum(p['alive'] for p in g['players']) + 1)
 def shooting_stage(game):
     Thread(target=shooting, args=(game,), daemon=True).start()
 
 
-@add_stage(5, 20)
+@add_stage(5, 10)
 def don_stage(game):
     keyboard = InlineKeyboardMarkup(row_width=10)
     keyboard.add(
@@ -255,7 +257,7 @@ def don_stage(game):
     )
 
 
-@add_stage(6, 20)
+@add_stage(6, 10)
 def sheriff_stage(game):
     keyboard = InlineKeyboardMarkup(row_width=10)
     keyboard.add(

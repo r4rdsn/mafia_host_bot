@@ -31,7 +31,6 @@ import flask
 import random
 from time import time
 from uuid import uuid4
-from os.path import getsize
 from threading import Thread
 from pymongo.collection import ReturnDocument
 
@@ -67,7 +66,7 @@ def play_croco(message):
     if database.croco.find_one({"chat": message.chat.id}):
         bot.send_message(message.chat.id, "Игра в этом чате уже идёт.")
         return
-    word = croco.get_word()
+    word = croco.get_word()[:-2]
     id = str(uuid4())[:8]
     keyboard = InlineKeyboardMarkup()
     keyboard.add(
@@ -102,7 +101,7 @@ def get_word(call):
         )
     else:
         bot.answer_callback_query(
-	    callback_query_id=call.id,
+            callback_query_id=call.id,
             show_alert=False,
             text="Ты не можешь получить слово для этой игры."
         )

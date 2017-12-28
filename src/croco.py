@@ -13,17 +13,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import config
+
 import codecs
 import random
 from os.path import getsize
 
-FILE_PATH = '/root/alfbot/base/words.txt'
-FILE_SIZE = getsize(FILE_PATH)
+BASE_SIZE = getsize(config.WORD_BASE)
+
 
 def get_word():
-    with codecs.open(FILE_PATH, 'r', encoding='cp1251') as base:
-        offset = random.randrange(FILE_SIZE)
+    with codecs.open(config.WORD_BASE, 'r', encoding='cp1251') as base:
+        offset = random.randrange(BASE_SIZE)
         base.seek(offset)
         base.readline()
-        word = base.readline()[:-2]
+        word = base.readline()
     return word
