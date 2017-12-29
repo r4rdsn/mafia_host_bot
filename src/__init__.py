@@ -1,4 +1,3 @@
-
 # Copyright (C) 2017  alfred richardsn
 #
 # This program is free software: you can redistribute it and/or modify
@@ -452,6 +451,7 @@ def request_interact(call):
     required_request = database.requests.find_one({"message_id": message_id})
 
     if required_request:
+        update_dict = {}
         player_object = None
         for player in required_request["players"]:
             if player["id"] == call.from_user.id:
@@ -467,12 +467,16 @@ def request_interact(call):
             increment_value = 1
             request_action = "$push"
             alert_message = 'Ты теперь в игре.'
+            update_dict["$set"] = {"time": time() + config.REQUEST_OVERDUE_TIME}
+
+        update_dict.update(
+            {request_action: {"players": player_object},
+             "$inc": {"players_count"}: increment_value}
+        )
 
         updated_document = database.requests.find_one_and_update(
             {"_id": required_request["_id"]},
-            {request_action: {"players": player_object},
-             "$inc": {"players_count": increment_value},
-             "$set": {"time": time() + config.REQUEST_OVERDUE_TIME}},
+            update_dict,
             return_document=ReturnDocument.AFTER
         )
 
