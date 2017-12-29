@@ -515,15 +515,20 @@ def create(message):
     )
 
     player_object = user_object(message.from_user)
+    request_overdue_time = time() + config.REQUEST_OVERDUE_TIME
 
-    answer = repl.new_request.format(owner=get_name(message.from_user), order=f"Игроки:\n1. {player_object['name']}")
+    answer = repl.new_request.format(
+        owner=get_name(message.from_user),
+        time=datetime.fromtimestamp(request_overdue_time).strftime('%H:%M'),
+        order=f"Игроки:\n1. {player_object['name']}"
+    )
     sent_message = bot.send_message(message.chat.id, answer, reply_markup=keyboard)
 
     database.requests.insert_one({
         "id": str(uuid4())[:8],
         "owner": player_object,
         "players": [player_object],
-        "time": time() + config.REQUEST_OVERDUE_TIME,
+        "time": request_overdue_time,
         "chat": message.chat.id,
         "message_id": sent_message.message_id,
         "players_count": 1
