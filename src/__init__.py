@@ -471,7 +471,7 @@ def request_interact(call):
 
         update_dict.update(
             {request_action: {"players": player_object},
-             "$inc": {"players_count"}: increment_value}
+             "$inc": {"players_count": increment_value}}
         )
 
         updated_document = database.requests.find_one_and_update(
