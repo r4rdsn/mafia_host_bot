@@ -225,7 +225,7 @@ def shooting(game):
                 message_id=game['message_id'],
                 reply_markup=keyboard
             )
-            sleep(1)
+            sleep(2)
 
 
 @add_stage(3, 5)
@@ -234,7 +234,7 @@ def night(game):
     database.games.update_one({'_id': game['_id']}, {'$unset': {'victim': True}, '$set': {'message_id': message_id}})
 
 
-@add_stage(4, lambda g: sum(p['alive'] for p in g['players']) + 1)
+@add_stage(4, lambda g: sum(p['alive'] for p in g['players']) * 2)
 def shooting_stage(game):
     Thread(target=shooting, args=(game,), daemon=True).start()
 

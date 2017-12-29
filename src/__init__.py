@@ -510,6 +510,11 @@ def request_interact(call):
     regexp=f"^/create@{bot.get_me().username}$"
 )
 def create(message):
+    existing_request = database.requests.find_one({"chat": message.chat.id})
+    if existing_request:
+        bot.send_message(message.chat.id, 'В этом чате уже есть игра!', reply_to_message_id=existing_request['message_id'])
+        return
+
     keyboard = InlineKeyboardMarkup()
     keyboard.add(
         InlineKeyboardButton(
