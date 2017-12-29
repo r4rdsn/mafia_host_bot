@@ -32,6 +32,7 @@ import random
 from time import time
 from uuid import uuid4
 from threading import Thread
+from datetime import datetime
 from pymongo.collection import ReturnDocument
 
 
@@ -470,7 +471,8 @@ def request_interact(call):
         updated_document = database.requests.find_one_and_update(
             {"_id": required_request["_id"]},
             {request_action: {"players": player_object},
-             "$inc": {"players_count": increment_value}},
+             "$inc": {"players_count": increment_value},
+             "$set": {"time": time() + config.REQUEST_OVERDUE_TIME}},
             return_document=ReturnDocument.AFTER
         )
 
@@ -485,6 +487,7 @@ def request_interact(call):
         bot.edit_message_text(
             repl.new_request.format(
                 owner=updated_document["owner"]["name"],
+                time=datetime.fromtimestamp(updated_document['time']).strftime('%H:%M'),
                 order='Игроков нет.' if not updated_document['players_count'] else
                       'Игроки:\n' + '\n'.join([f'{i+1}. {p["name"]}' for i, p in enumerate(updated_document["players"])])
             ),
@@ -495,8 +498,6 @@ def request_interact(call):
 
         bot.answer_callback_query(callback_query_id=call.id, show_alert=False, text=alert_message)
     else:
-        # delete_result = bot.delete_message(chat_id=call.message.chat.id, message_id=message_id)
-        # if not delete_result:
         bot.edit_message_text("Заявка больше не существует.", chat_id=call.message.chat.id, message_id=message_id)
 
 
