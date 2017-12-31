@@ -341,7 +341,7 @@ def vote(call):
             return_document=ReturnDocument.AFTER
         )
 
-        keyboard = InlineKeyboardMarkup(row_width=10)
+        keyboard = InlineKeyboardMarkup(row_width=8)
         keyboard.add(
             *[InlineKeyboardButton(
                 text=f"{i+1}",

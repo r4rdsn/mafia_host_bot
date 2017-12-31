@@ -77,7 +77,7 @@ def cards_not_taken(game):
 
 @add_stage(-2, 60)
 def set_order(game):
-    keyboard = InlineKeyboardMarkup()
+    keyboard = InlineKeyboardMarkup(row_width=8)
     keyboard.row(
         *[InlineKeyboardButton(
           text=f"{i+1}",
@@ -161,7 +161,7 @@ def get_votes(game):
 
 @add_stage(1, 30)
 def vote(game):
-    keyboard = InlineKeyboardMarkup(row_width=10)
+    keyboard = InlineKeyboardMarkup(row_width=8)
     keyboard.add(
         *[InlineKeyboardButton(
             text=f"{i+1}",
@@ -241,7 +241,7 @@ def shooting_stage(game):
 
 @add_stage(5, 10)
 def don_stage(game):
-    keyboard = InlineKeyboardMarkup(row_width=10)
+    keyboard = InlineKeyboardMarkup(row_width=8)
     keyboard.add(
         *[InlineKeyboardButton(
             text=f"{i+1}",
@@ -259,7 +259,7 @@ def don_stage(game):
 
 @add_stage(6, 10)
 def sheriff_stage(game):
-    keyboard = InlineKeyboardMarkup(row_width=10)
+    keyboard = InlineKeyboardMarkup(row_width=8)
     keyboard.add(
         *[InlineKeyboardButton(
             text=f"{i+1}",
@@ -287,11 +287,11 @@ def last_words_victim(game):
             update_dict['$set'][f'players.{victim}.alive'] = False
             update_dict['$set']['victim'] = game['players'][victim]['id']
 
+    database.games.update_one({'_id': game['_id']}, update_dict)
+
     if not mafia_shot:
         go_to_next_stage(game)
         return
-
-    database.games.update_one({'_id': game['_id']}, update_dict)
 
     bot.edit_message_text(
         f'Доброе утро, город!\nПечальные новости: этой ночью был убит игрок {victim+1}',
