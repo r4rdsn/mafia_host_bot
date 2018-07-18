@@ -465,6 +465,14 @@ def request_interact(call):
                 break
 
         if player_object is None:
+            if len(required_request["players"]) >= config.PLAYERS_COUNT_LIMIT:
+                bot.answer_callback_query(
+                    callback_query_id=call.id,
+                    show_alert=False,
+                    text='В игре состоит максимальное количество игроков.'
+                )
+                return
+
             player_object = user_object(call.from_user)
             increment_value = 1
             request_action = "$push"

@@ -1,6 +1,7 @@
 TOKEN = '782171936:cNOEzw8p1Es6pERAfMs5GMnvKQy4IETdgeY'  # Learn how to get one on https://core.telegram.org/bots#6-botfather
 ADMIN_ID = 34651378
 PLAYERS_COUNT_TO_START = 4  # Minimal quantity of players that is required to start mafia game
+PLAYERS_COUNT_LIMIT = 10  # Maximum quantity of players that is allowed to start mafia game
 REQUEST_OVERDUE_TIME = 10 * 60  # Time (in seconds) of request's inactivity after which it gets deleted from database
 SERVER_IP = '216.239.32.68'
 SERVER_PORT = 80
