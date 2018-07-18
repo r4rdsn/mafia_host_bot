@@ -54,7 +54,7 @@ def user_object(user):
 def start_command(message):
     answer = f"""Привет, я {bot.get_me().first_name}!
 Я умею создавать игры в мафию в группах и супергруппах.
-Инструкция и исходный код: https://github.com/r4rdsn/mafia_host_bot
+Инструкция и исходный код: https://gitlab.com/r4rdsn/mafia_host_bot
 По всем вопросам пишите на https://t.me/r4rdsn"""
     bot.send_message(message.chat.id, answer)
 
@@ -219,6 +219,7 @@ def check_don(call):
     player_game = database.games.find_one({
         "stage": 5,
         "players": {"$elemMatch": {
+            "alive": True,
             "role": "don",
             "id": call.from_user.id
         }},
@@ -253,6 +254,7 @@ def check_sheriff(call):
     player_game = database.games.find_one({
         "stage": 6,
         "players": {"$elemMatch": {
+            "alive": True,
             "role": "sheriff",
             "id": call.from_user.id
         }},
@@ -623,6 +625,7 @@ def callback_inline(call):
     player_game = database.games.find_one({
         "stage": 4,
         "players": {"$elemMatch": {
+            "alive": True,
             "role": {"$in": ["don", "mafia"]},
             "id": call.from_user.id
         }},
