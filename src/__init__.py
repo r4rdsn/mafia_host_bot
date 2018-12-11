@@ -24,6 +24,7 @@ from .stages import stages, go_to_next_stage, format_roles, get_votes
 from .bot import bot
 
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, Update
+from telebot.apihelper import ApiException
 
 import re
 import flask
@@ -42,6 +43,14 @@ def get_name(user):
 def user_object(user):
     return {"id": user.id,
             "name": get_name(user)}
+
+
+def try_to_send_message(*args, **kwargs):
+    try:
+        bot.send_message(*args, **kwargs)
+    except ApiException:
+        logger.error('Ошибка API при отправке сообщения', exc_info=True)
+
 
 
 @bot.message_handler(
@@ -731,7 +740,7 @@ def stage_cycle():
             game_state = is_game_over(game)
             if game_state:
                 role = role_titles['peace' if game_state == 1 else 'mafia']
-                bot.send_message(
+                try_to_send_message(
                     game['chat'],
                     f'Игра окончена! Победили игроки команды "{role}"!\n\nРоли были распределены следующий образом:\n' +
                     '\n'.join([f'{i+1}. {p["name"]} - {role_titles[p["role"]]}' for i, p in enumerate(game['players'])])
@@ -749,10 +758,10 @@ def croco_cycle():
         for game in games:
             if game["stage"] == 0:
                 database.croco.update_one({"_id": game["_id"]}, {"$set": {"stage": 1, "time": curtime + 60}})
-                bot.send_message(game["chat"], f"{game['name'].capitalize()}, до конца игры осталась минута!")
+                try_to_send_message(game["chat"], f"{game['name'].capitalize()}, до конца игры осталась минута!")
             else:
                 database.croco.delete_one({"_id": game["_id"]})
-                bot.send_message(game["chat"], f"Игра окончена! {game['name'].capitalize()} проигрывает, загаданное слово было {game['word']}.")
+                try_to_send_message(game["chat"], f"Игра окончена! {game['name'].capitalize()} проигрывает, загаданное слово было {game['word']}.")
 
 
 def start_thread(name=None, target=None, *args, daemon=True, **kwargs):
