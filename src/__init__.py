@@ -53,12 +53,14 @@ def try_to_send_message(*args, **kwargs):
         logger.error('Ошибка API при отправке сообщения', exc_info=True)
 
 
-def repin_message(chat_id, pinned_message):
+def repin_message(chat_id, pinned_message, last_pinned):
     try:
-        if pinned_message:
-            bot.pin_chat_message(chat_id, pinned_message, disable_notification=True)
-        else:
-            bot.unpin_chat_message(chat_id)
+        chat = bot.get_chat(chat_id)
+        if chat.pinned_message.id == pinned_message:
+            if last_pinned:
+                bot.pin_chat_message(chat_id, last_pinned, disable_notification=True)
+            else:
+                bot.unpin_chat_message(chat_id)
     except ApiException:
         logger.error('Ошибка API при закреплении сообщения', exc_info=True)
 
@@ -607,7 +609,7 @@ def start_game(message):
 
         stage_number = min(stages.keys())
 
-        repin_message(message.chat.id, req['pinned_message'])
+        repin_message(message.chat.id, req["message_id"], req['pinned_message'])
 
         message_id = bot.send_message(
             message.chat.id,
@@ -647,7 +649,7 @@ def cancel(message):
          "chat": message.chat.id}
     )
     if req:
-        repin_message(message.chat.id, req["pinned_message"])
+        repin_message(message.chat.id, req["message_id"], req["pinned_message"])
         answer = "Твоя заявка удалена."
     else:
         answer = "У тебя нет заявки на игру."
