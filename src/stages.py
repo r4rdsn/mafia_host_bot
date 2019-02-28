@@ -78,7 +78,7 @@ def cards_not_taken(game):
 @add_stage(-2, 60)
 def set_order(game):
     keyboard = InlineKeyboardMarkup(row_width=8)
-    keyboard.row(
+    keyboard.add(
         *[InlineKeyboardButton(
           text=f"{i+1}",
           callback_data=f"append to order {i+1}"
