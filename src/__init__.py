@@ -937,7 +937,7 @@ def main():
 
     bot.remove_webhook()
     url = 'https://{}:{}/'.format(config.SERVER_IP, config.SERVER_PORT)
-    bot.set_webhook(url=url + config.TOKEN, certificate=open(config.SSL_CERT, 'r'))
+    bot.set_webhook(url=url + config.TOKEN)
 
     logger.debug(f"Запускаю приложение по адресу {url}")
     app.run(host=config.SERVER_IP,
