@@ -64,14 +64,14 @@ def repin_message(chat_id, pinned_message):
 
 
 @bot.message_handler(
-func=lambda message: message.chat.type == "private",
-commands=["start", "help"]
+    func=lambda message: message.chat.type == "private",
+    commands=["start", "help"]
 )
 @bot.message_handler(
-regexp=f"/help@{bot.get_me().username}"
+    regexp=f"/help@{bot.get_me().username}"
 )
 def start_command(message):
-answer = f"""Привет, я {bot.get_me().first_name}!
+    answer = f"""Привет, я {bot.get_me().first_name}!
 Я умею создавать игры в мафию в группах и супергруппах.
 Инструкция и исходный код: https://gitlab.com/r4rdsn/mafia_host_bot
 По всем вопросам пишите на https://t.me/r4rdsn"""
