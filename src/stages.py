@@ -40,6 +40,8 @@ def go_to_next_stage(game, inc=1):
     stage = stages[stage_number]
     time_inc = stage['time'](game) if callable(stage['time']) else stage['time']
 
+    database.polls.delete_many({'chat': game['chat']})
+
     new_game = database.games.find_one_and_update(
         {'_id': game['_id']},
         {'$set': {

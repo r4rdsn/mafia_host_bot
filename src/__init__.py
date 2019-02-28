@@ -34,6 +34,7 @@ from uuid import uuid4
 from threading import Thread
 from datetime import datetime
 from pymongo.collection import ReturnDocument
+from bson.objectid import ObjectId
 
 
 def get_name(user):
@@ -634,6 +635,142 @@ def cancel(message):
     bot.send_message(
         message.chat.id,
         "Твоя заявка удалена." if req.deleted_count else "У тебя нет заявки на игру."
+    )
+
+
+@bot.message_handler(
+    func=lambda message: message.chat.type in ("group", "supergroup"),
+    regexp=f"^/skip@{bot.get_me().username}$"
+)
+def skip_discussion(message):
+    existing_poll = database.polls.find_one({'chat': message.chat.id})
+    if existing_poll:
+        bot.send_message(
+            message.chat.id,
+            'В этом чате уже идёт опрос!',
+            reply_to_message_id=existing_poll['message_id']
+        )
+        return
+
+    player_game = database.games.find_one({
+        'stage': 0,
+        'players': {'$elemMatch': {
+            'alive': True,
+            'id': message.from_user.id
+        }},
+        'chat': message.chat.id,
+    })
+
+    if not player_game:
+        return
+
+    peace_team = set()
+    mafia_team = set()
+
+    for player in player_game['players']:
+        if player['alive']:
+            if player['role'] in ('don', 'mafia'):
+                mafia_team.add(player['id'])
+            else:
+                peace_team.add(player['id'])
+
+    peace_votes = 0
+    mafia_votes = 0
+    if message.from_user.id in peace_team:
+        peace_votes += 1
+    else:
+        mafia_votes += 1
+
+    poll = {
+        'chat': message.chat.id,
+        'creator': get_name(message.from_user),
+        'peace_count': peace_votes,
+        'peace_required': 2 * len(peace_team) // 3,
+        'mafia_count': mafia_votes,
+        'mafia_required': 2 * len(mafia_team) // 3,
+        'votes': [message.from_user.id],
+    }
+
+    keyboard = InlineKeyboardMarkup()
+    keyboard.add(
+        InlineKeyboardButton(
+            text='Проголосовать',
+            callback_data='poll'
+        )
+    )
+
+    answer = f'{poll["creator"]} предлагает пропустить обсуждение.'
+    poll['message_id'] = bot.send_message(message.chat.id, answer, reply_markup=keyboard).message_id
+    database.polls.insert_one(poll)
+
+
+@bot.callback_query_handler(func=lambda call: call.data == 'poll')
+def poll_vote(call):
+    message_id = call.message.message_id
+    poll = database.polls.find_one({'message_id': message_id})
+
+    if not poll:
+        bot.edit_message_text(
+            'Опрос больше не существует.',
+            chat_id=call.message.chat.id,
+            message_id=message_id
+        )
+        return
+
+    if call.from_user.id in poll['votes']:
+        bot.answer_callback_query(
+            callback_query_id=call.id,
+            show_alert=False,
+            text='Твой голос уже был учтён.',
+        )
+        return
+
+    player_game = database.games.find_one({
+        'players': {'$elemMatch': {
+            'alive': True,
+            'id': call.from_user.id
+        }},
+        'chat': call.message.chat.id
+    })
+
+    if not player_game:
+        bot.answer_callback_query(
+            callback_query_id=call.id,
+            show_alert=False,
+            text='Ты не можешь голосовать.',
+        )
+        return
+
+    increment_value = {}
+    mafia_count = poll['mafia_count']
+    peace_count = poll['peace_count']
+
+    for player in player_game['players']:
+        if player['id'] == call.from_user.id:
+            if player['role'] in ('don', 'mafia'):
+                increment_value['mafia_count'] = 1
+                mafia_count += 1
+            else:
+                increment_value['peace_count'] = 1
+                peace_count += 1
+
+    if mafia_count >= poll['mafia_required'] and peace_count >= poll['peace_required']:
+        bot.edit_message_reply_markup(
+            chat_id=call.message.chat.id,
+            message_id=message_id
+        )
+        go_to_next_stage(player_game)
+        return
+
+    database.polls.update_one({
+        '$addToSet': {'votes': call.from_user.id},
+        '$inc': increment_value
+    })
+
+    bot.answer_callback_query(
+        callback_query_id=call.id,
+        show_alert=False,
+        text='Голос учтён.'
     )
 
 
