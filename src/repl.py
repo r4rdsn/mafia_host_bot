@@ -28,11 +28,6 @@ take_card = (
     "Игроки с номерами [{not_took}], разбираем карты!"
 )
 
-night_role = (
-    "{past_role} засыпает, просыпается {new_role}.\n"
-    "{new_role}, кого ты выбираешь?"
-)
-
 morning_message = (
     "{peaceful_night}"
     "Идёт день {day}.\n"
