@@ -562,6 +562,8 @@ def create(message):
         "players_count": 1
     })
 
+    bot.pin_chat_message(message.chat.id, sent_message.message_id)
+
 
 @bot.message_handler(
     func=lambda message: message.chat.type in ("group", "supergroup"),
