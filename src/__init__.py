@@ -56,7 +56,7 @@ def try_to_send_message(*args, **kwargs):
 def repin_message(chat_id, pinned_message, last_pinned):
     try:
         chat = bot.get_chat(chat_id)
-        if chat.pinned_message.message_id == pinned_message:
+        if chat.pinned_message and chat.pinned_message.message_id == pinned_message:
             if last_pinned:
                 bot.pin_chat_message(chat_id, last_pinned, disable_notification=True)
             else:
