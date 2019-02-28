@@ -53,16 +53,25 @@ def try_to_send_message(*args, **kwargs):
         logger.error('Ошибка API при отправке сообщения', exc_info=True)
 
 
+def repin_message(chat_id, pinned_message):
+    try:
+        if pinned_message:
+            bot.pin_chat_message(chat_id, pinned_message, disable_notification=True)
+        else:
+            bot.unpin_chat_message(chat_id)
+    except ApiException:
+        logger.error('Ошибка API при закреплении сообщения', exc_info=True)
+
 
 @bot.message_handler(
-    func=lambda message: message.chat.type == "private",
-    commands=["start", "help"]
+func=lambda message: message.chat.type == "private",
+commands=["start", "help"]
 )
 @bot.message_handler(
-    regexp=f"/help@{bot.get_me().username}"
+regexp=f"/help@{bot.get_me().username}"
 )
 def start_command(message):
-    answer = f"""Привет, я {bot.get_me().first_name}!
+answer = f"""Привет, я {bot.get_me().first_name}!
 Я умею создавать игры в мафию в группах и супергруппах.
 Инструкция и исходный код: https://gitlab.com/r4rdsn/mafia_host_bot
 По всем вопросам пишите на https://t.me/r4rdsn"""
@@ -560,6 +569,7 @@ def create(message):
         "time": request_overdue_time,
         "chat": message.chat.id,
         "message_id": sent_message.message_id,
+        "pinned_message": message.chat.pinned_message,
         "players_count": 1
     })
 
@@ -595,6 +605,8 @@ def start_game(message):
 
         stage_number = min(stages.keys())
 
+        repin_message(message.chat.id, req['pinned_message'])
+
         message_id = bot.send_message(
             message.chat.id,
             repl.take_card.format(
@@ -628,14 +640,16 @@ def start_game(message):
     regexp=f"^/cancel@{bot.get_me().username}$"
 )
 def cancel(message):
-    req = database.requests.delete_one(
+    req = database.requests.find_one_and_delete(
         {"owner.id": message.from_user.id,
          "chat": message.chat.id}
     )
-    bot.send_message(
-        message.chat.id,
-        "Твоя заявка удалена." if req.deleted_count else "У тебя нет заявки на игру."
-    )
+    if req:
+        repin_message(message.chat.id, req["pinned_message"])
+        answer = "Твоя заявка удалена."
+    else:
+        answer = "У тебя нет заявки на игру."
+    bot.send_message(message.chat.id, answer)
 
 
 @bot.message_handler(
@@ -843,7 +857,10 @@ def night_speak(message):
         elif not player.get('alive', True) or game['stage'] not in (0, -4):
             delete = True
         if delete:
-            bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+            try:
+                bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+            except ApiException:
+                logger.error('Ошибка API при удалении сообщения', exc_info=True)
         return
 
     game = database.croco.find_one({"chat": message.chat.id})
