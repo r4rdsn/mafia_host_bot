@@ -562,6 +562,8 @@ def create(message):
     )
     sent_message = bot.send_message(message.chat.id, answer, reply_markup=keyboard)
 
+    pinned_message = bot.get_chat(message.chat.id).pinned_message
+
     database.requests.insert_one({
         "id": str(uuid4())[:8],
         "owner": player_object,
@@ -569,7 +571,7 @@ def create(message):
         "time": request_overdue_time,
         "chat": message.chat.id,
         "message_id": sent_message.message_id,
-        "pinned_message": message.chat.pinned_message.id if message.chat.pinned_message else None,
+        "pinned_message": pinned_message.message_id if pinned_message else None,
         "players_count": 1
     })
 
