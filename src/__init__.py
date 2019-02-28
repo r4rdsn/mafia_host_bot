@@ -569,7 +569,7 @@ def create(message):
         "time": request_overdue_time,
         "chat": message.chat.id,
         "message_id": sent_message.message_id,
-        "pinned_message": message.chat.pinned_message,
+        "pinned_message": message.chat.pinned_message.id if message.chat.pinned_message else None,
         "players_count": 1
     })
 
