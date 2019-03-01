@@ -664,7 +664,7 @@ def create_poll(message, poll_type, suggestion):
     if existing_poll:
         bot.send_message(
             message.chat.id,
-            'В этом чате уже идёт голосование за окончание игры!',
+            'В этом чате уже идёт голосование!',
             reply_to_message_id=existing_poll['message_id']
         )
         return
