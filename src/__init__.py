@@ -656,16 +656,15 @@ def cancel(message):
     bot.send_message(message.chat.id, answer)
 
 
-@bot.message_handler(
-    func=lambda message: message.chat.type in ("group", "supergroup"),
-    regexp=f"^/skip@{bot.get_me().username}$"
-)
-def skip_discussion(message):
-    existing_poll = database.polls.find_one({'chat': message.chat.id})
+def create_poll(message, poll_type, suggestion):
+    existing_poll = database.polls.find_one({
+        'chat': message.chat.id,
+        'type': poll_type
+    })
     if existing_poll:
         bot.send_message(
             message.chat.id,
-            'В этом чате уже идёт опрос!',
+            'В этом чате уже идёт голосование за окончание игры!',
             reply_to_message_id=existing_poll['message_id']
         )
         return
@@ -701,6 +700,7 @@ def skip_discussion(message):
 
     poll = {
         'chat': message.chat.id,
+        'type': 'skip',
         'creator': get_name(message.from_user),
         'peace_count': peace_votes,
         'peace_required': 2 * len(peace_team) // 3,
@@ -717,9 +717,25 @@ def skip_discussion(message):
         )
     )
 
-    answer = f'{poll["creator"]} предлагает пропустить обсуждение.'
+    answer = f'{poll["creator"]} предлагает {suggestion}.'
     poll['message_id'] = bot.send_message(message.chat.id, answer, reply_markup=keyboard).message_id
     database.polls.insert_one(poll)
+
+
+@bot.message_handler(
+    func=lambda message: message.chat.type in ("group", "supergroup"),
+    regexp=f"^/end@{bot.get_me().username}$"
+)
+def force_game_end(message):
+    create_poll(message, 'end', 'закончить игру')
+
+
+@bot.message_handler(
+    func=lambda message: message.chat.type in ("group", "supergroup"),
+    regexp=f"^/skip@{bot.get_me().username}$"
+)
+def skip_discussion(message):
+    create_poll(message, 'skip', 'пропустить обсуждение')
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'poll')
@@ -729,7 +745,7 @@ def poll_vote(call):
 
     if not poll:
         bot.edit_message_text(
-            'Опрос больше не существует.',
+            'Голосование больше не существует.',
             chat_id=call.message.chat.id,
             message_id=message_id
         )
@@ -777,7 +793,11 @@ def poll_vote(call):
             chat_id=call.message.chat.id,
             message_id=message_id
         )
-        go_to_next_stage(player_game)
+        if poll['type'] == 'skip':
+            go_to_next_stage(player_game)
+        elif poll['type'] == 'end':
+            database.games.delete_one({'_id': player_game['_id']})
+            bot.send_message(message.chat.id, "Игра окончена! Игроки проголосовали за окончание игры.")
         return
 
     database.polls.update_one({
