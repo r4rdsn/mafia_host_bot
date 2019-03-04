@@ -65,6 +65,15 @@ def repin_message(chat_id, pinned_message, last_pinned):
         logger.error('Ошибка API при закреплении сообщения', exc_info=True)
 
 
+def send_game_over_message(game, reason):
+    try_to_send_message(
+        game['chat'],
+        f'Игра окончена! {reason}\n\nРоли были распределены следующим образом:\n' +
+        '\n'.join([f'{i+1}. {p["name"]} - {role_titles[p["role"]]}' for i, p in enumerate(game['players'])])
+    )
+    database.games.delete_one({'_id': game['_id']})
+
+
 @bot.message_handler(
     func=lambda message: message.chat.type == "private",
     commands=["start", "help"]
@@ -796,9 +805,8 @@ def poll_vote(call):
         if poll['type'] == 'skip':
             go_to_next_stage(player_game)
         elif poll['type'] == 'end':
-            database.games.delete_one({'_id': player_game['_id']})
-            bot.send_message(call.message.chat.id, "Игра окончена! Игроки проголосовали за окончание игры.")
-        return
+            stop_game(game, reason='Игроки проголосовали за окончание игры.')
+            return
 
     database.polls.update_one({
         '$addToSet': {'votes': call.from_user.id},
@@ -920,12 +928,7 @@ def stage_cycle():
             game_state = is_game_over(game)
             if game_state:
                 role = role_titles['peace' if game_state == 1 else 'mafia']
-                try_to_send_message(
-                    game['chat'],
-                    f'Игра окончена! Победили игроки команды "{role}"!\n\nРоли были распределены следующий образом:\n' +
-                    '\n'.join([f'{i+1}. {p["name"]} - {role_titles[p["role"]]}' for i, p in enumerate(game['players'])])
-                )
-                database.games.delete_one({'_id': game['_id']})
+                stop_game(game, reason=f'Победили игроки команды "{role}"!')
                 continue
 
             game = go_to_next_stage(game)
