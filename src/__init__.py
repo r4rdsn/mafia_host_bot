@@ -53,18 +53,6 @@ def try_to_send_message(*args, **kwargs):
         logger.error('Ошибка API при отправке сообщения', exc_info=True)
 
 
-def repin_message(chat_id, pinned_message, last_pinned):
-    try:
-        chat = bot.get_chat(chat_id)
-        if chat.pinned_message and chat.pinned_message.message_id == pinned_message:
-            if last_pinned:
-                bot.pin_chat_message(chat_id, last_pinned, disable_notification=True)
-            else:
-                bot.unpin_chat_message(chat_id)
-    except ApiException:
-        logger.error('Ошибка API при закреплении сообщения', exc_info=True)
-
-
 def send_game_over_message(game, reason):
     try_to_send_message(
         game['chat'],
@@ -573,8 +561,6 @@ def create(message):
     )
     sent_message = bot.send_message(message.chat.id, answer, reply_markup=keyboard)
 
-    pinned_message = bot.get_chat(message.chat.id).pinned_message
-
     database.requests.insert_one({
         "id": str(uuid4())[:8],
         "owner": player_object,
@@ -582,11 +568,8 @@ def create(message):
         "time": request_overdue_time,
         "chat": message.chat.id,
         "message_id": sent_message.message_id,
-        "pinned_message": pinned_message.message_id if pinned_message else None,
         "players_count": 1
     })
-
-    bot.pin_chat_message(message.chat.id, sent_message.message_id)
 
 
 @bot.message_handler(
@@ -617,8 +600,6 @@ def start_game(message):
         )
 
         stage_number = min(stages.keys())
-
-        repin_message(message.chat.id, req["message_id"], req['pinned_message'])
 
         message_id = bot.send_message(
             message.chat.id,
@@ -658,7 +639,6 @@ def cancel(message):
          "chat": message.chat.id}
     )
     if req:
-        repin_message(message.chat.id, req["message_id"], req["pinned_message"])
         answer = "Твоя заявка удалена."
     else:
         answer = "У тебя нет заявки на игру."
