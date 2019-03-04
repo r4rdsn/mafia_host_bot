@@ -700,7 +700,7 @@ def create_poll(message, poll_type, suggestion):
 
     poll = {
         'chat': message.chat.id,
-        'type': 'skip',
+        'type': poll_type,
         'creator': get_name(message.from_user),
         'peace_count': peace_votes,
         'peace_required': 2 * len(peace_team) // 3,
@@ -797,7 +797,7 @@ def poll_vote(call):
             go_to_next_stage(player_game)
         elif poll['type'] == 'end':
             database.games.delete_one({'_id': player_game['_id']})
-            bot.send_message(message.chat.id, "Игра окончена! Игроки проголосовали за окончание игры.")
+            bot.send_message(call.message.chat.id, "Игра окончена! Игроки проголосовали за окончание игры.")
         return
 
     database.polls.update_one({
