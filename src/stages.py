@@ -23,6 +23,7 @@ from time import time, sleep
 from threading import Thread
 from pymongo.collection import ReturnDocument
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from telebot.apihelper import ApiException
 
 
 stages = {}
@@ -51,7 +52,13 @@ def go_to_next_stage(game, inc=1):
          '$inc': {'day_count': int(stage_number == 0)}},
         return_document=ReturnDocument.AFTER
     )
-    stage['func'](new_game)
+    try:
+        stage['func'](new_game)
+    except ApiException as exception:
+        if exception.result.status_code == 403:
+            database.games.delete_one({'_id': game['_id']})
+            return
+
     return new_game
 
 
