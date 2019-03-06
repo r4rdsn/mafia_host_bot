@@ -677,6 +677,8 @@ def create_poll(message, game, poll_type, suggestion):
     if not game or game['stage'] not in (0, -4):
         return
 
+    check_roles = game['stage'] == 0
+
     existing_poll = database.polls.find_one({
         'chat': message.chat.id,
         'type': poll_type
@@ -689,35 +691,42 @@ def create_poll(message, game, poll_type, suggestion):
         )
         return
 
-    peace_team = set()
-    mafia_team = set()
-
-    for player in game['players']:
-        if player['alive']:
-            if player['role'] in ('don', 'mafia'):
-                mafia_team.add(player['id'])
-            else:
-                peace_team.add(player['id'])
-
-    peace_votes = 0
-    mafia_votes = 0
-    if message.from_user.id in peace_team:
-        peace_votes += 1
-    else:
-        mafia_votes += 1
-
     poll = {
         'chat': message.chat.id,
         'type': poll_type,
         'creator': get_name(message.from_user),
-        'peace_count': peace_votes,
-        'peace_required': 2 * len(peace_team) // 3,
-        'mafia_count': mafia_votes,
-        'mafia_required': 2 * len(mafia_team) // 3,
+        'check_roles': check_roles,
         'votes': [message.from_user.id],
     }
 
     keyboard = InlineKeyboardMarkup()
+    if check_roles:
+        peace_team = set()
+        mafia_team = set()
+
+        for player in game['players']:
+            if player['alive']:
+                if player['role'] in ('don', 'mafia'):
+                    mafia_team.add(player['id'])
+                else:
+                    peace_team.add(player['id'])
+
+        peace_votes = 0
+        mafia_votes = 0
+        if message.from_user.id in peace_team:
+            peace_votes += 1
+        else:
+            mafia_votes += 1
+
+        poll['peace_count'] = peace_votes
+        poll['peace_required'] = 2 * len(peace_team) // 3
+        poll['mafia_count'] = mafia_votes
+        poll['mafia_required'] = 2 * len(mafia_team) // 3
+
+    else:
+        poll['count'] = 1
+        poll['required'] = 2 * len(game['players']) // 3
+
     keyboard.add(
         InlineKeyboardButton(
             text='Проголосовать',
@@ -778,19 +787,27 @@ def poll_vote(call):
         return
 
     increment_value = {}
-    mafia_count = poll['mafia_count']
-    peace_count = poll['peace_count']
 
-    for player in player_game['players']:
-        if player['id'] == call.from_user.id:
-            if player['role'] in ('don', 'mafia'):
-                increment_value['mafia_count'] = 1
-                mafia_count += 1
-            else:
-                increment_value['peace_count'] = 1
-                peace_count += 1
+    if poll['check_roles']:
+        mafia_count = poll['mafia_count']
+        peace_count = poll['peace_count']
 
-    if mafia_count >= poll['mafia_required'] and peace_count >= poll['peace_required']:
+        for player in player_game['players']:
+            if player['id'] == call.from_user.id:
+                if player['role'] in ('don', 'mafia'):
+                    increment_value['mafia_count'] = 1
+                    mafia_count += 1
+                else:
+                    increment_value['peace_count'] = 1
+                    peace_count += 1
+
+                poll_condition = mafia_count > poll['mafia_required'] and peace_count >= poll['peace_required']
+                break
+    else:
+        increment_value['count'] = 1
+        poll_condition = poll['count'] + 1 > poll['required']
+
+    if poll_condition:
         bot.edit_message_reply_markup(
             chat_id=call.message.chat.id,
             message_id=message_id
