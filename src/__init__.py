@@ -34,7 +34,6 @@ from uuid import uuid4
 from threading import Thread
 from datetime import datetime
 from pymongo.collection import ReturnDocument
-from bson.objectid import ObjectId
 
 
 def get_name(user):
