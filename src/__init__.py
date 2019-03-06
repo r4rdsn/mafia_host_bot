@@ -745,8 +745,8 @@ def force_game_end(message, game):
 
 
 @group_message_handler(regexp=f"^/skip@{bot.get_me().username}$")
-def skip_discussion(message, game):
-    create_poll(message, game, 'skip', 'пропустить обсуждение')
+def skip_current_stage(message, game):
+    create_poll(message, game, 'skip', 'пропустить текущую стадию')
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'poll')
