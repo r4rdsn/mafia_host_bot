@@ -29,29 +29,33 @@ from telebot.apihelper import ApiException
 stages = {}
 
 
-def add_stage(number, time):
+def add_stage(number, time=None, delete=False):
     def decorator(func):
-        stages[number] = {'time': time, 'func': func}
+        stages[number] = {'time': time, 'func': func, 'delete': delete}
         return func
     return decorator
 
 
 def go_to_next_stage(game, inc=1):
-    stage_number = 0 if game['stage'] == max(stages.keys()) + 1 - inc else game['stage'] + inc
-    stage = stages[stage_number]
-    time_inc = stage['time'](game) if callable(stage['time']) else stage['time']
-
     database.polls.delete_many({'chat': game['chat']})
 
-    new_game = database.games.find_one_and_update(
-        {'_id': game['_id']},
-        {'$set': {
-            'next_stage_time': time() + (time_inc if isinstance(time_inc, (int, float)) else 0),
-            'stage': stage_number,
-            'played': []},
-         '$inc': {'day_count': int(stage_number == 0)}},
-        return_document=ReturnDocument.AFTER
-    )
+    stage_number = 0 if game['stage'] == max(stages.keys()) + 1 - inc else game['stage'] + inc
+    stage = stages[stage_number]
+    if stage['delete']:
+        database.games.delete_one({'_id': game['_id']})
+        new_game = game
+    else:
+        time_inc = stage['time'](game) if callable(stage['time']) else stage['time']
+        new_game = database.games.find_one_and_update(
+            {'_id': game['_id']},
+            {'$set': {
+                'next_stage_time': time() + (time_inc if isinstance(time_inc, (int, float)) else 0),
+                'stage': stage_number,
+                'played': []},
+             '$inc': {'day_count': int(stage_number == 0)}},
+            return_document=ReturnDocument.AFTER
+        )
+
     try:
         stage['func'](new_game)
     except ApiException as exception:
@@ -74,9 +78,8 @@ def first_stage():
     pass
 
 
-@add_stage(-3, 0)
+@add_stage(-3, delete=True)
 def cards_not_taken(game):
-    database.games.delete_one({'_id': game['_id']})
     bot.edit_message_text(
         'Игра окончена! Игроки не взяли свои карты.',
         chat_id=game['chat'],
@@ -89,9 +92,9 @@ def set_order(game):
     keyboard = InlineKeyboardMarkup(row_width=8)
     keyboard.add(
         *[InlineKeyboardButton(
-          text=f"{i+1}",
-          callback_data=f"append to order {i+1}"
-          ) for i, player in enumerate(game["players"])]
+            text=f"{i+1}",
+            callback_data=f"append to order {i+1}"
+        ) for i, player in enumerate(game["players"])]
     )
     keyboard.row(
         InlineKeyboardButton(
