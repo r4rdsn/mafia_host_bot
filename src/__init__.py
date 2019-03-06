@@ -814,7 +814,7 @@ def poll_vote(call):
         if poll['type'] == 'skip':
             go_to_next_stage(player_game)
         elif poll['type'] == 'end':
-            stop_game(game, reason='Игроки проголосовали за окончание игры.')
+            stop_game(player_game, reason='Игроки проголосовали за окончание игры.')
             return
 
     database.polls.update_one(
