@@ -53,7 +53,7 @@ def try_to_send_message(*args, **kwargs):
         logger.error('Ошибка API при отправке сообщения', exc_info=True)
 
 
-def send_game_over_message(game, reason):
+def stop_game(game, reason):
     try_to_send_message(
         game['chat'],
         f'Игра окончена! {reason}\n\nРоли были распределены следующим образом:\n' +
@@ -62,14 +62,53 @@ def send_game_over_message(game, reason):
     database.games.delete_one({'_id': game['_id']})
 
 
+def game_handler(handler):
+    def decorator(message, *args, **kwargs):
+        game = database.games.find_one({"players.id": message.from_user.id, "chat": message.chat.id})
+        if game:
+            player = next(p for p in game["players"] if p["id"] == message.from_user.id)
+            delete = False
+            if game['stage'] in (2, 7):
+                victim = game.get('victim')
+                if victim is not None and victim != message.from_user.id:
+                    delete = True
+            elif not player.get('alive', True) or game['stage'] not in (0, -4):
+                delete = True
+            if delete:
+                try:
+                    bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+                except ApiException:
+                    logger.error('Ошибка API при удалении сообщения', exc_info=True)
+                return
+
+        return handler(message, game, *args, **kwargs)
+    return decorator
+
+
+def group_only(message):
+    return message.chat.type in ("group", "supergroup")
+
+
+def group_message_handler(*, func=None, **kwargs):
+    def decorator(handler):
+        if func is None:
+            conjuction = group_only
+        else:
+            conjuction = lambda message: group_only(message) and func(message)
+
+        new_handler = game_handler(handler)
+        handler_dict = bot._build_handler_dict(new_handler, func=conjuction, **kwargs)
+        bot.add_message_handler(handler_dict)
+        return new_handler
+    return decorator
+
+
 @bot.message_handler(
     func=lambda message: message.chat.type == "private",
     commands=["start", "help"]
 )
-@bot.message_handler(
-    regexp=f"/help@{bot.get_me().username}"
-)
-def start_command(message):
+@group_message_handler(regexp=f"/help@{bot.get_me().username}")
+def start_command(message, game):
     answer = f"""Привет, я {bot.get_me().first_name}!
 Я умею создавать игры в мафию в группах и супергруппах.
 Инструкция и исходный код: https://gitlab.com/r4rdsn/mafia_host_bot
@@ -77,10 +116,8 @@ def start_command(message):
     bot.send_message(message.chat.id, answer)
 
 
-@bot.message_handler(
-    commands=["croco"]
-)
-def play_croco(message):
+@group_message_handler(commands=["croco"])
+def play_croco(message, game):
     if database.croco.find_one({"chat": message.chat.id}):
         bot.send_message(message.chat.id, "Игра в этом чате уже идёт.")
         return
@@ -533,11 +570,8 @@ def request_interact(call):
         bot.edit_message_text("Заявка больше не существует.", chat_id=call.message.chat.id, message_id=message_id)
 
 
-@bot.message_handler(
-    func=lambda message: message.chat.type in ("group", "supergroup"),
-    regexp=f"^/create@{bot.get_me().username}$"
-)
-def create(message):
+@group_message_handler(regexp=f"^/create@{bot.get_me().username}$")
+def create(message, game):
     existing_request = database.requests.find_one({"chat": message.chat.id})
     if existing_request:
         bot.send_message(message.chat.id, 'В этом чате уже есть игра!', reply_to_message_id=existing_request['message_id'])
@@ -572,11 +606,8 @@ def create(message):
     })
 
 
-@bot.message_handler(
-    func=lambda message: message.chat.type in ("group", "supergroup"),
-    regexp=f"^/start@{bot.get_me().username}$"
-)
-def start_game(message):
+@group_message_handler(regexp=f"^/start@{bot.get_me().username}$")
+def start_game(message, game):
     req = database.requests.find_and_modify(
         {"owner.id": message.from_user.id,
          "chat": message.chat.id,
@@ -629,11 +660,8 @@ def start_game(message):
         bot.send_message(message.chat.id, "У тебя нет заявки на игру, которую возможно начать.")
 
 
-@bot.message_handler(
-    func=lambda message: message.chat.type in ("group", "supergroup"),
-    regexp=f"^/cancel@{bot.get_me().username}$"
-)
-def cancel(message):
+@group_message_handler(regexp=f"^/cancel@{bot.get_me().username}$")
+def cancel(message, game):
     req = database.requests.find_one_and_delete(
         {"owner.id": message.from_user.id,
          "chat": message.chat.id}
@@ -645,7 +673,10 @@ def cancel(message):
     bot.send_message(message.chat.id, answer)
 
 
-def create_poll(message, poll_type, suggestion):
+def create_poll(message, game, poll_type, suggestion):
+    if not game or game['stage'] not in (0, -4):
+        return
+
     existing_poll = database.polls.find_one({
         'chat': message.chat.id,
         'type': poll_type
@@ -658,22 +689,10 @@ def create_poll(message, poll_type, suggestion):
         )
         return
 
-    player_game = database.games.find_one({
-        'stage': 0,
-        'players': {'$elemMatch': {
-            'alive': True,
-            'id': message.from_user.id
-        }},
-        'chat': message.chat.id,
-    })
-
-    if not player_game:
-        return
-
     peace_team = set()
     mafia_team = set()
 
-    for player in player_game['players']:
+    for player in game['players']:
         if player['alive']:
             if player['role'] in ('don', 'mafia'):
                 mafia_team.add(player['id'])
@@ -711,20 +730,14 @@ def create_poll(message, poll_type, suggestion):
     database.polls.insert_one(poll)
 
 
-@bot.message_handler(
-    func=lambda message: message.chat.type in ("group", "supergroup"),
-    regexp=f"^/end@{bot.get_me().username}$"
-)
-def force_game_end(message):
-    create_poll(message, 'end', 'закончить игру')
+@group_message_handler(regexp=f"^/end@{bot.get_me().username}$")
+def force_game_end(message, game):
+    create_poll(message, game, 'end', 'закончить игру')
 
 
-@bot.message_handler(
-    func=lambda message: message.chat.type in ("group", "supergroup"),
-    regexp=f"^/skip@{bot.get_me().username}$"
-)
-def skip_discussion(message):
-    create_poll(message, 'skip', 'пропустить обсуждение')
+@group_message_handler(regexp=f"^/skip@{bot.get_me().username}$")
+def skip_discussion(message, game):
+    create_poll(message, game, 'skip', 'пропустить обсуждение')
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'poll')
@@ -854,27 +867,8 @@ def print_database(message):
     bot.send_message(message.chat.id, "Все документы базы данных игр выведены в терминал!")
 
 
-@bot.message_handler(
-    func=lambda message: message.chat.type in ("group", "supergroup")
-)
-def night_speak(message):
-    game = database.games.find_one({"players.id": message.from_user.id, "chat": message.chat.id})
-    if game:
-        player = next(p for p in game["players"] if p["id"] == message.from_user.id)
-        delete = False
-        if game['stage'] in (2, 7):
-            victim = game.get('victim')
-            if victim is not None and victim != message.from_user.id:
-                delete = True
-        elif not player.get('alive', True) or game['stage'] not in (0, -4):
-            delete = True
-        if delete:
-            try:
-                bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
-            except ApiException:
-                logger.error('Ошибка API при удалении сообщения', exc_info=True)
-        return
-
+@group_message_handler()
+def croco_suggestion(message, game):
     game = database.croco.find_one({"chat": message.chat.id})
     if game and re.search(r'\b{}\b'.format(game['word']), message.text.lower().replace('ё', 'е')):
         if message.from_user.id == game["player"]:
@@ -882,6 +876,13 @@ def night_speak(message):
         else:
             bot.reply_to(message, "Игра окончена! Это верное слово!")
         database.croco.delete_one({"_id": game["_id"]})
+
+
+@group_message_handler(
+    content_types=['audio', 'video', 'document', 'text', 'location', 'contact', 'sticker']
+)
+def default_handler(message, game):
+    pass
 
 
 def remove_overtimed_requests():
