@@ -801,10 +801,13 @@ def poll_vote(call):
             stop_game(game, reason='Игроки проголосовали за окончание игры.')
             return
 
-    database.polls.update_one({
-        '$addToSet': {'votes': call.from_user.id},
-        '$inc': increment_value
-    })
+    database.polls.update_one(
+        {'_id': poll['_id']},
+        {
+            '$addToSet': {'votes': call.from_user.id},
+            '$inc': increment_value
+        }
+    )
 
     bot.answer_callback_query(
         callback_query_id=call.id,
