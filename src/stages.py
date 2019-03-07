@@ -14,10 +14,10 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-from . import repl
+from . import lang
 from .bot import bot
-from .db import database
-from .game_config import role_titles
+from .database import database
+from .game import role_titles
 
 from time import time, sleep
 from threading import Thread
@@ -48,11 +48,13 @@ def go_to_next_stage(game, inc=1):
         time_inc = stage['time'](game) if callable(stage['time']) else stage['time']
         new_game = database.games.find_one_and_update(
             {'_id': game['_id']},
-            {'$set': {
-                'next_stage_time': time() + (time_inc if isinstance(time_inc, (int, float)) else 0),
-                'stage': stage_number,
-                'played': []},
-             '$inc': {'day_count': int(stage_number == 0)}},
+            {
+                '$set': {
+                    'next_stage_time': time() + (time_inc if isinstance(time_inc, (int, float)) else 0),
+                    'stage': stage_number,
+                    'played': []
+                },
+                '$inc': {'day_count': int(stage_number == 0)}},
             return_document=ReturnDocument.AFTER
         )
 
@@ -66,10 +68,10 @@ def go_to_next_stage(game, inc=1):
     return new_game
 
 
-def format_roles(game, show_roles=False, condition=lambda p: p.get("alive", True)):
-    return "\n".join(
-        [f"{i+1}. {p['name']}{' - ' + role_titles[p['role']] if show_roles else ''}"
-         for i, p in enumerate(game["players"]) if condition(p)]
+def format_roles(game, show_roles=False, condition=lambda p: p.get('alive', True)):
+    return '\n'.join(
+        [f'{i + 1}. {p["name"]}{" - " + role_titles[p["role"]] if show_roles else ""}'
+         for i, p in enumerate(game['players']) if condition(p)]
     )
 
 
@@ -92,20 +94,20 @@ def set_order(game):
     keyboard = InlineKeyboardMarkup(row_width=8)
     keyboard.add(
         *[InlineKeyboardButton(
-            text=f"{i+1}",
-            callback_data=f"append to order {i+1}"
-        ) for i, player in enumerate(game["players"])]
+            text=f'{i + 1}',
+            callback_data=f'append to order {i + 1}'
+        ) for i, player in enumerate(game['players'])]
     )
     keyboard.row(
         InlineKeyboardButton(
-            text="Познакомиться с командой",
-            callback_data="mafia team"
+            text='Познакомиться с командой',
+            callback_data='mafia team'
         )
     )
     keyboard.row(
         InlineKeyboardButton(
-            text="Закончить выбор",
-            callback_data="end order"
+            text='Закончить выбор',
+            callback_data='end order'
         )
     )
 
@@ -141,8 +143,10 @@ def discussion(game):
     if game['day_count'] > 1 and game.get('victim') is None:
         bot.edit_message_text(
             repl.morning_message.format(
-                peaceful_night=("Доброе утро, город!\n"
-                                "Этой ночью обошлось без смертей.\n"),
+                peaceful_night=(
+                    'Доброе утро, город!\n'
+                    'Этой ночью обошлось без смертей.\n'
+                ),
                 day=game['day_count'],
                 order=format_roles(game)
             ),
@@ -155,7 +159,7 @@ def discussion(game):
         bot.send_message(
             game['chat'],
             repl.morning_message.format(
-                peaceful_night="",
+                peaceful_night='',
                 day=game['day_count'],
                 order=format_roles(game)
             ),
@@ -164,11 +168,12 @@ def discussion(game):
 
 def get_votes(game):
     names = [(0, 'Не голосовать')] + [(i + 1, p['name']) for i, p in enumerate(game['players']) if p['alive']]
-    return "\n".join(
-        [f"{i}. {name}" + (
+    return '\n'.join([
+        f'{i}. {name}' + (
             (': ' + ', '.join(str(v + 1) for v in game['vote'][str(i - 1)]))
-            if str(i - 1) in game['vote'] else '')
-         for i, name in names])
+            if str(i - 1) in game['vote'] else ''
+        ) for i, name in names
+    ])
 
 
 @add_stage(1, 30)
@@ -176,14 +181,14 @@ def vote(game):
     keyboard = InlineKeyboardMarkup(row_width=8)
     keyboard.add(
         *[InlineKeyboardButton(
-            text=f"{i+1}",
-            callback_data=f"vote {i+1}"
-        ) for i, player in enumerate(game["players"]) if player['alive']]
+            text=f'{i + 1}',
+            callback_data=f'vote {i + 1}'
+        ) for i, player in enumerate(game['players']) if player['alive']]
     )
     keyboard.add(
         InlineKeyboardButton(
-            text="Не голосовать",
-            callback_data="vote 0"
+            text='Не голосовать',
+            callback_data='vote 0'
         )
     )
 
@@ -225,14 +230,14 @@ def shooting(game):
     keyboard = InlineKeyboardMarkup()
     keyboard.add(
         InlineKeyboardButton(
-            text="🔫 Выстрелить",
-            callback_data="shot"
+            text='🔫 Выстрелить',
+            callback_data='shot'
         )
     )
     for i, player in enumerate(game['players']):
         if player['alive']:
             bot.edit_message_text(
-                f"{i+1}. {player['name']}",
+                f'{i + 1}. {player["name"]}',
                 chat_id=game['chat'],
                 message_id=game['message_id'],
                 reply_markup=keyboard
@@ -242,8 +247,17 @@ def shooting(game):
 
 @add_stage(3, 5)
 def night(game):
-    message_id = bot.send_message(game['chat'], f"Наступает ночь. Город засыпает. {role_titles['mafia'].capitalize()}, приготовьтесь к выстрелу...").message_id
-    database.games.update_one({'_id': game['_id']}, {'$unset': {'victim': True}, '$set': {'message_id': message_id}})
+    message_id = bot.send_message(
+        game['chat'],
+        f'Наступает ночь. Город засыпает. {role_titles["mafia"].capitalize()}, приготовьтесь к выстрелу...'
+    ).message_id
+    database.games.update_one(
+        {'_id': game['_id']},
+        {
+            '$unset': {'victim': True},
+            '$set': {'message_id': message_id}
+        }
+    )
 
 
 @add_stage(4, lambda g: sum(p['alive'] for p in g['players']) * 2)
@@ -256,9 +270,9 @@ def don_stage(game):
     keyboard = InlineKeyboardMarkup(row_width=8)
     keyboard.add(
         *[InlineKeyboardButton(
-            text=f"{i+1}",
-            callback_data=f"check don {i+1}"
-        ) for i, player in enumerate(game["players"]) if player['alive']]
+            text=f'{i + 1}',
+            callback_data=f'check don {i + 1}'
+        ) for i, player in enumerate(game['players']) if player['alive']]
     )
 
     bot.edit_message_text(
@@ -274,9 +288,9 @@ def sheriff_stage(game):
     keyboard = InlineKeyboardMarkup(row_width=8)
     keyboard.add(
         *[InlineKeyboardButton(
-            text=f"{i+1}",
-            callback_data=f"check sheriff {i+1}"
-        ) for i, player in enumerate(game["players"]) if player['alive']]
+            text=f'{i + 1}',
+            callback_data=f'check sheriff {i + 1}'
+        ) for i, player in enumerate(game['players']) if player['alive']]
     )
 
     bot.edit_message_text(

@@ -13,11 +13,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+
 import config
 
 import codecs
 import random
 from os.path import getsize
+
 
 BASE_SIZE = getsize(config.WORD_BASE)
 
