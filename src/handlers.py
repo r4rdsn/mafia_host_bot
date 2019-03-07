@@ -59,7 +59,7 @@ def start_command(message, game):
         f'Привет, я {bot.get_me().first_name}!\n'
         'Я умею создавать игры в мафию в группах и супергруппах.\n'
         'Инструкция и исходный код: https://gitlab.com/r4rdsn/mafia_host_bot\n'
-        'По всем вопросам пишите на https://t.me/r4rdsn'
+        'По всем вопросам пишите на @r4rdsn'
     )
     bot.send_message(message.chat.id, answer)
 
