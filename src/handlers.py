@@ -18,7 +18,7 @@ import config
 from .database import database
 from . import lang
 from . import croco
-from .game import role_titles
+from .game import role_titles, stop_game
 from .stages import stages, go_to_next_stage, format_roles, get_votes
 from .bot import bot
 
@@ -38,15 +38,6 @@ def get_name(user):
 
 def user_object(user):
     return {'id': user.id, 'name': get_name(user)}
-
-
-def stop_game(game, reason):
-    bot.try_to_send_message(
-        game['chat'],
-        f'Игра окончена! {reason}\n\nРоли были распределены следующим образом:\n' +
-        '\n'.join([f'{i + 1}. {p["name"]} - {role_titles[p["role"]]}' for i, p in enumerate(game['players'])])
-    )
-    database.games.delete_one({'_id': game['_id']})
 
 
 @bot.message_handler(
