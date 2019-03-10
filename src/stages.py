@@ -142,7 +142,7 @@ def get_order(game):
 def discussion(game):
     if game['day_count'] > 1 and game.get('victim') is None:
         bot.edit_message_text(
-            repl.morning_message.format(
+            lang.morning_message.format(
                 peaceful_night=(
                     'Доброе утро, город!\n'
                     'Этой ночью обошлось без смертей.\n'
@@ -158,7 +158,7 @@ def discussion(game):
             database.games.update_one({'_id': game['_id']}, {'$unset': {'victim': True}})
         bot.send_message(
             game['chat'],
-            repl.morning_message.format(
+            lang.morning_message.format(
                 peaceful_night='',
                 day=game['day_count'],
                 order=format_roles(game)
@@ -194,7 +194,7 @@ def vote(game):
 
     message_id = bot.send_message(
         game['chat'],
-        repl.vote.format(vote=get_votes(game)),
+        lang.vote.format(vote=get_votes(game)),
         reply_markup=keyboard
     ).message_id
 
