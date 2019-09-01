@@ -895,10 +895,10 @@ def print_database(message):
     bot.send_message(message.chat.id, 'Все документы базы данных игр выведены в терминал!')
 
 
-@bot.group_message_handler()
+@bot.group_message_handler(content_types=['text'])
 def croco_suggestion(message, game):
     game = database.croco.find_one({'chat': message.chat.id})
-    if game and re.search(r'\b{}\b'.format(game['word']), message.text.lower().replace('ё', 'е')):
+    if game and message.text is not None and re.search(r'\b{}\b'.format(game['word']), message.text.lower().replace('ё', 'е')):
         if message.from_user.id == game['player']:
             bot.reply_to(message, 'Игра окончена! Нельзя самому называть слово!')
         else:
@@ -906,8 +906,6 @@ def croco_suggestion(message, game):
         database.croco.delete_one({'_id': game['_id']})
 
 
-@bot.group_message_handler(
-    content_types=['audio', 'video', 'document', 'text', 'location', 'contact', 'sticker']
-)
+@bot.group_message_handler()
 def default_handler(message, game):
     pass
