@@ -37,21 +37,77 @@ def get_name(user):
 
 
 def user_object(user):
-    return {'id': user.id, 'name': get_name(user)}
+    full_name = user.first_name
+    if user.last_name:
+        full_name += ' ' + user.last_name
+    return {'id': user.id, 'name': get_name(user), 'full_name': full_name}
 
 
+@bot.message_handler(func=lambda message: message.chat.type == 'private', commands=['start', 'help'])
 @bot.message_handler(
-    func=lambda message: message.chat.type == 'private',
-    commands=['start', 'help']
+    func=lambda message: message.chat.type != 'private',
+    regexp=f'/help@{bot.get_me().username}'
 )
-@bot.group_message_handler(regexp=f'/help@{bot.get_me().username}')
-def start_command(message, game):
+def start_command(message):
     answer = (
         f'Привет, я {bot.get_me().first_name}!\n'
         'Я умею создавать игры в мафию в группах и супергруппах.\n'
         'Инструкция и исходный код: https://gitlab.com/r4rdsn/mafia_host_bot\n'
         'По всем вопросам пишите на @r4rdsn'
     )
+    bot.send_message(message.chat.id, answer)
+
+
+@bot.message_handler(func=lambda message: message.chat.type == 'private', commands=['stats'])
+@bot.message_handler(
+    func=lambda message: message.chat.type != 'private',
+    regexp=f'/stats@{bot.get_me().username}'
+)
+def stats_command(message):
+    stats = database.stats.find_one({'id': message.from_user.id, 'chat': message.chat.id})
+    if not stats:
+        answer = f'Статистика {get_name(message.from_user)} пуста.'
+    else:
+        win = stats.get('win', 0)
+        answer = (
+            f'Счёт {get_name(message.from_user)}: {2 * win - stats["total"]}\n'
+            f'Побед: {win}/{stats["total"]} ({100 * win // stats["total"]}%)\n'
+        )
+        roles = []
+        for role, title in role_titles.items():
+            if role in stats:
+                role_win = stats[role].get('win', 0)
+                roles.append({
+                    'title': title,
+                    'total': stats[role]['total'],
+                    'win': role_win,
+                    'rate': 100 * role_win // stats[role]['total']
+                })
+        for role in sorted(roles, key=lambda s: s['rate'], reverse=True):
+            answer += (
+                f'\n{role["title"].capitalize()}: '
+                f'побед - {role.get("win", 0)}/{role["total"]} ({role["rate"]}%)'
+            )
+    bot.send_message(message.chat.id, answer)
+
+
+@bot.message_handler(func=lambda message: message.chat.type == 'private', commands=['rating'])
+@bot.message_handler(
+    func=lambda message: message.chat.type != 'private',
+    regexp=f'/rating@{bot.get_me().username}'
+)
+def rating_command(message):
+    stats = list(database.stats.find({'chat': message.chat.id}))
+    if not stats:
+        answer = f'Статистика чата пуста.'
+    else:
+        for stat in stats:
+            stat['score'] = 2 * stat.get('win', 0) - stat['total']
+        stats = sorted(stats, key=lambda s: s['score'], reverse=True)[:5]
+        rating = []
+        for place, stat in enumerate(stats):
+            rating.append(f'{place + 1}. {stat["name"]}: {stat["score"]}')
+        answer = '\n'.join(rating)
     bot.send_message(message.chat.id, answer)
 
 

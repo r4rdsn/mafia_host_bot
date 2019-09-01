@@ -51,6 +51,19 @@ def stage_cycle():
             game_state = is_game_over(game)
             if game_state:
                 role = role_titles['peace' if game_state == 1 else 'mafia']
+                for player in game['players']:
+                    inc_dict = {'total': 1, f'{player["role"]}.total': 1}
+                    if (
+                        (game_state == 1 and player['role'] not in ('don', 'mafia')) or
+                        (game_state == 2 and player['role'] in ('don', 'mafia'))
+                    ):
+                        inc_dict['win'] = 1
+                        inc_dict[f'{player["role"]}.win'] = 1
+                    database.stats.update_one(
+                        {'id': player['id'], 'chat': game['chat']},
+                        {'$set': {'name': player['full_name']}, '$inc': inc_dict},
+                        upsert=True
+                    )
                 stop_game(game, reason=f'Победили игроки команды "{role}"!')
                 continue
 
