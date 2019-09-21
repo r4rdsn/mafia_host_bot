@@ -594,7 +594,7 @@ def create(message, game):
 
     answer = lang.new_request.format(
         owner=get_name(message.from_user),
-        time=datetime.fromtimestamp(request_overdue_time).strftime('%H:%M'),
+        time=datetime.utcfromtimestamp(request_overdue_time).strftime('%H:%M'),
         order=f'Игроки:\n1. {player_object["name"]}'
     )
     sent_message = bot.send_message(message.chat.id, answer, reply_markup=keyboard)
