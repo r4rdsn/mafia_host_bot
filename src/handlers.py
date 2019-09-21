@@ -560,7 +560,7 @@ def request_interact(call):
         bot.edit_message_text(
             lang.new_request.format(
                 owner=updated_document['owner']['name'],
-                time=datetime.fromtimestamp(updated_document['time']).strftime('%H:%M'),
+                time=datetime.utcfromtimestamp(updated_document['time']).strftime('%H:%M'),
                 order='Игроков нет.' if not updated_document['players_count'] else
                       'Игроки:\n' + '\n'.join([f'{i + 1}. {p["name"]}' for i, p in enumerate(updated_document['players'])])
             ),
