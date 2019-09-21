@@ -52,13 +52,14 @@ def stage_cycle():
             if game_state:
                 role = role_titles['peace' if game_state == 1 else 'mafia']
                 for player in game['players']:
-                    inc_dict = {'total': 1, f'{player["role"]}.total': 1}
+                    player_role = player['role'] if player['role'] != 'don' else 'mafia'
+                    inc_dict = {'total': 1, f'{player_role}.total': 1}
                     if (
-                        (game_state == 1 and player['role'] not in ('don', 'mafia')) or
-                        (game_state == 2 and player['role'] in ('don', 'mafia'))
+                        (game_state == 1 and player_role != 'mafia') or
+                        (game_state == 2 and player_role == 'mafia')
                     ):
                         inc_dict['win'] = 1
-                        inc_dict[f'{player["role"]}.win'] = 1
+                        inc_dict[f'{player_role}.win'] = 1
                     database.stats.update_one(
                         {'id': player['id'], 'chat': game['chat']},
                         {'$set': {'name': player['full_name']}, '$inc': inc_dict},
