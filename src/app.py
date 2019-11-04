@@ -93,12 +93,6 @@ def start_thread(name=None, target=None, *args, daemon=True, **kwargs):
 app = flask.Flask(__name__)
 
 
-@app.before_request
-def limit_remote_addr():
-    if flask.request.remote_addr not in config.IP_RANGE:
-        flask.abort(403)
-
-
 @app.route('/' + config.TOKEN, methods=['POST'])
 def webhook():
     if flask.request.headers.get('content-type') == 'application/json':
