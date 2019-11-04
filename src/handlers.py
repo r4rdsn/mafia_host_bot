@@ -43,11 +43,8 @@ def user_object(user):
     return {'id': user.id, 'name': get_name(user), 'full_name': full_name}
 
 
-@bot.message_handler(func=lambda message: message.chat.type == 'private', commands=['start', 'help'])
-@bot.message_handler(
-    func=lambda message: message.chat.type != 'private',
-    regexp=f'/help@{bot.get_me().username}'
-)
+@bot.message_handler(commands=['help'])
+@bot.message_handler(func=lambda message: message.chat.type == 'private', commands=['start'])
 def start_command(message):
     answer = (
         f'Привет, я {bot.get_me().first_name}!\n'
@@ -58,11 +55,7 @@ def start_command(message):
     bot.send_message(message.chat.id, answer)
 
 
-@bot.message_handler(func=lambda message: message.chat.type == 'private', commands=['stats'])
-@bot.message_handler(
-    func=lambda message: message.chat.type != 'private',
-    regexp=f'/stats@{bot.get_me().username}'
-)
+@bot.message_handler(commands=['stats'])
 def stats_command(message):
     stats = database.stats.find_one({'id': message.from_user.id, 'chat': message.chat.id})
     if not stats:
@@ -91,11 +84,7 @@ def stats_command(message):
     bot.send_message(message.chat.id, answer)
 
 
-@bot.message_handler(func=lambda message: message.chat.type == 'private', commands=['rating'])
-@bot.message_handler(
-    func=lambda message: message.chat.type != 'private',
-    regexp=f'/rating@{bot.get_me().username}'
-)
+@bot.message_handler(commands=['rating'])
 def rating_command(message):
     stats = list(database.stats.find({'chat': message.chat.id}))
     if not stats:
@@ -574,7 +563,7 @@ def request_interact(call):
         bot.edit_message_text('Заявка больше не существует.', chat_id=call.message.chat.id, message_id=message_id)
 
 
-@bot.group_message_handler(regexp=f'^/create@{bot.get_me().username}$')
+@bot.group_message_handler(commands=['create'])
 def create(message, game):
     existing_request = database.requests.find_one({'chat': message.chat.id})
     if existing_request:
@@ -610,7 +599,7 @@ def create(message, game):
     })
 
 
-@bot.group_message_handler(regexp=f'^/start@{bot.get_me().username}$')
+@bot.group_message_handler(commands=['start'])
 def start_game(message, game):
     req = database.requests.find_and_modify(
         {
@@ -666,7 +655,7 @@ def start_game(message, game):
         bot.send_message(message.chat.id, 'У тебя нет заявки на игру, которую возможно начать.')
 
 
-@bot.group_message_handler(regexp=f'^/cancel@{bot.get_me().username}$')
+@bot.group_message_handler(commands=['cancel'])
 def cancel(message, game):
     req = database.requests.find_one_and_delete({
         'owner.id': message.from_user.id,
@@ -745,12 +734,12 @@ def create_poll(message, game, poll_type, suggestion):
     database.polls.insert_one(poll)
 
 
-@bot.group_message_handler(regexp=f'^/end@{bot.get_me().username}$')
+@bot.group_message_handler(commands=['end'])
 def force_game_end(message, game):
     create_poll(message, game, 'end', 'закончить игру')
 
 
-@bot.group_message_handler(regexp=f'^/skip@{bot.get_me().username}$')
+@bot.group_message_handler(commands=['skip'])
 def skip_current_stage(message, game):
     create_poll(message, game, 'skip', 'пропустить текущую стадию')
 
