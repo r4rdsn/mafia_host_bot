@@ -82,6 +82,11 @@ def croco_cycle():
             else:
                 database.croco.delete_one({'_id': game['_id']})
                 bot.try_to_send_message(game['chat'], f'Игра окончена! {game["name"].capitalize()} проигрывает, загаданное слово было {game["word"]}.')
+                database.stats.update_one(
+                    {'id': game['player'], 'chat': game['chat']},
+                    {'$set': {'name': game['full_name']}, '$inc': {'croco.total': 1}},
+                    upsert=True
+                )
 
 
 def start_thread(name=None, target=None, *args, daemon=True, **kwargs):

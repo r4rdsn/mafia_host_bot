@@ -36,11 +36,15 @@ def get_name(user):
     return '@' + user.username if user.username else user.first_name
 
 
-def user_object(user):
-    full_name = user.first_name
+def get_full_name(user):
+    result = user.first_name
     if user.last_name:
-        full_name += ' ' + user.last_name
-    return {'id': user.id, 'name': get_name(user), 'full_name': full_name}
+        result += ' ' + user.last_name
+    return result
+
+
+def user_object(user):
+    return {'id': user.id, 'name': get_name(user), 'full_name': get_full_name(user)}
 
 
 @bot.message_handler(commands=['help'])
@@ -55,16 +59,32 @@ def start_command(message):
     bot.send_message(message.chat.id, answer)
 
 
+def get_mafia_score(stats):
+    return 2 * stats.get('win', 0) - stats['total']
+
+
+def get_croco_score(stats):
+    result = 3 * stats['croco'].get('win', 0)
+    result += stats['croco'].get('guesses', 0)
+    result -= stats['croco'].get('cheat', 0)
+    return result
+
+
 @bot.message_handler(commands=['stats'])
 def stats_command(message):
     stats = database.stats.find_one({'id': message.from_user.id, 'chat': message.chat.id})
+
     if not stats:
-        answer = f'Статистика {get_name(message.from_user)} пуста.'
-    else:
+        bot.send_message(message.chat.id, f'Статистика {get_name(message.from_user)} пуста.')
+        return
+
+    paragraphs = []
+
+    if 'total' in stats:
         win = stats.get('win', 0)
         answer = (
-            f'Счёт {get_name(message.from_user)}: {2 * win - stats["total"]}\n'
-            f'Побед: {win}/{stats["total"]} ({100 * win // stats["total"]}%)\n'
+            f'Счёт {get_name(message.from_user)} в мафии: {get_mafia_score(stats)}\n'
+            f'Побед: {win}/{stats["total"]} ({100 * win // stats["total"]}%)'
         )
         roles = []
         for role, title in role_titles.items():
@@ -81,23 +101,74 @@ def stats_command(message):
                 f'\n{role["title"].capitalize()}: '
                 f'побед - {role.get("win", 0)}/{role["total"]} ({role["rate"]}%)'
             )
-    bot.send_message(message.chat.id, answer)
+        paragraphs.append(answer)
+
+    if 'croco' in stats:
+        answer = f'Счёт {get_name(message.from_user)} в крокодиле: {get_croco_score(stats)}'
+        total = stats['croco'].get('total')
+        if total:
+            win = stats['croco'].get('win', 0)
+            answer += f'\nПобед: {win}/{total} ({100 * win // total}%)'
+        guesses = stats['croco'].get('guesses')
+        if guesses:
+            answer += f'\nУгадано: {guesses}'
+        paragraphs.append(answer)
+
+    bot.send_message(message.chat.id, '\n\n'.join(paragraphs))
+
+
+def get_place(score, rating):
+    for place, (_, rating_score) in enumerate(rating):
+        if score > rating_score:
+            return place
+    return None
 
 
 @bot.message_handler(commands=['rating'])
 def rating_command(message):
-    stats = list(database.stats.find({'chat': message.chat.id}))
+    stats = database.stats.find({'chat': message.chat.id})
+
     if not stats:
-        answer = f'Статистика чата пуста.'
-    else:
-        for stat in stats:
-            stat['score'] = 2 * stat.get('win', 0) - stat['total']
-        stats = sorted(stats, key=lambda s: s['score'], reverse=True)[:5]
-        rating = []
-        for place, stat in enumerate(stats):
-            rating.append(f'{place + 1}. {stat["name"]}: {stat["score"]}')
-        answer = '\n'.join(rating)
-    bot.send_message(message.chat.id, answer)
+        bot.send_message(message.chat.id, 'Статистика чата пуста.')
+        return
+
+    mafia_rating = []
+    croco_rating = []
+
+    for stat in stats:
+        if 'total' in stat:
+            score = get_mafia_score(stat)
+            place = get_place(score, mafia_rating)
+            if place is not None:
+                mafia_rating.insert(place, (stat['name'], score))
+                mafia_rating = mafia_rating[:5]
+            elif len(mafia_rating) < 5:
+                mafia_rating.append((stat['name'], score))
+
+        if 'croco' in stat:
+            score = get_croco_score(stat)
+            place = get_place(score, croco_rating)
+            if place is not None:
+                croco_rating.insert(place, (stat['name'], score))
+                croco_rating = mafia_rating[:3]
+            elif len(croco_rating) < 3:
+                croco_rating.append((stat['name'], score))
+
+    paragraphs = []
+
+    if mafia_rating:
+        rating = 'Рейтинг игроков в мафию:'
+        for place, (name, score) in enumerate(mafia_rating):
+            rating += f'\n{place + 1}. {name}: {score}'
+        paragraphs.append(rating)
+
+    if croco_rating:
+        rating = 'Рейтинг игроков в крокодила:'
+        for place, (name, score) in enumerate(croco_rating):
+            rating += f'\n{place + 1}. {name}: {score}'
+        paragraphs.append(rating)
+
+    bot.send_message(message.chat.id, '\n\n'.join(paragraphs))
 
 
 @bot.group_message_handler(commands=['croco'])
@@ -119,6 +190,7 @@ def play_croco(message, game):
         'id': id,
         'player': message.from_user.id,
         'name': name,
+        'full_name': get_full_name(message.from_user),
         'word': word,
         'chat': message.chat.id,
         'time': time() + 60,
@@ -888,11 +960,24 @@ def print_database(message):
 def croco_suggestion(message, game):
     game = database.croco.find_one({'chat': message.chat.id})
     if game and message.text is not None and re.search(r'\b{}\b'.format(game['word']), message.text.lower().replace('ё', 'е')):
+        inc_dict = {'croco.total': 1}
         if message.from_user.id == game['player']:
+            inc_dict['croco.cheat'] = 1
             bot.reply_to(message, 'Игра окончена! Нельзя самому называть слово!')
         else:
+            inc_dict['croco.win'] = 1
+            database.stats.update_one(
+                {'id': message.from_user.id, 'chat': game['chat']},
+                {'$inc': {'croco.guesses': 1}},
+                upsert=True
+            )
             bot.reply_to(message, 'Игра окончена! Это верное слово!')
         database.croco.delete_one({'_id': game['_id']})
+        database.stats.update_one(
+            {'id': game['player'], 'chat': game['chat']},
+            {'$set': {'name': game['full_name']}, '$inc': inc_dict},
+            upsert=True
+        )
 
 
 @bot.group_message_handler()
