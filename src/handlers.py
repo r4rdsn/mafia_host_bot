@@ -150,7 +150,7 @@ def rating_command(message):
             place = get_place(score, croco_rating)
             if place is not None:
                 croco_rating.insert(place, (stat['name'], score))
-                croco_rating = mafia_rating[:3]
+                croco_rating = croco_rating[:3]
             elif len(croco_rating) < 3:
                 croco_rating.append((stat['name'], score))
 
