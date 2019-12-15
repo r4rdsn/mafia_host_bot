@@ -117,56 +117,45 @@ def stats_command(message):
     bot.send_message(message.chat.id, '\n\n'.join(paragraphs))
 
 
-def get_place(score, rating):
-    for place, (_, rating_score) in enumerate(rating):
+def update_rating(rating, stat, score, maxlen):
+    place = None
+    for i, (_, rating_score) in enumerate(rating):
         if score > rating_score:
-            return place
-    return None
+            place = i
+            break
+    if place is not None:
+        rating.insert(place, (stat['name'], score))
+        if len(rating) > maxlen:
+            rating.pop(-1)
+    elif len(rating) < maxlen:
+        rating.append((stat['name'], score))
+
+
+def get_rating_list(rating):
+    return '\n'.join(f'{i + 1}. {n}: {s}' for i, (n, s) in enumerate(rating))
 
 
 @bot.message_handler(commands=['rating'])
 def rating_command(message):
-    stats = database.stats.find({'chat': message.chat.id})
+    chat_stats = database.stats.find({'chat': message.chat.id})
 
-    if not stats:
+    if not chat_stats:
         bot.send_message(message.chat.id, 'Статистика чата пуста.')
         return
 
     mafia_rating = []
     croco_rating = []
-
-    for stat in stats:
-        if 'total' in stat:
-            score = get_mafia_score(stat)
-            place = get_place(score, mafia_rating)
-            if place is not None:
-                mafia_rating.insert(place, (stat['name'], score))
-                mafia_rating = mafia_rating[:5]
-            elif len(mafia_rating) < 5:
-                mafia_rating.append((stat['name'], score))
-
-        if 'croco' in stat:
-            score = get_croco_score(stat)
-            place = get_place(score, croco_rating)
-            if place is not None:
-                croco_rating.insert(place, (stat['name'], score))
-                croco_rating = croco_rating[:3]
-            elif len(croco_rating) < 3:
-                croco_rating.append((stat['name'], score))
+    for stats in chat_stats:
+        if 'total' in stats:
+            update_rating(mafia_rating, stats, get_mafia_score(stats), 5)
+        if 'croco' in stats:
+            update_rating(croco_rating, stats, get_croco_score(stats), 3)
 
     paragraphs = []
-
     if mafia_rating:
-        rating = 'Рейтинг игроков в мафию:'
-        for place, (name, score) in enumerate(mafia_rating):
-            rating += f'\n{place + 1}. {name}: {score}'
-        paragraphs.append(rating)
-
+        paragraphs.append('Рейтинг игроков в мафию:\n' + get_rating_list(mafia_rating))
     if croco_rating:
-        rating = 'Рейтинг игроков в крокодила:'
-        for place, (name, score) in enumerate(croco_rating):
-            rating += f'\n{place + 1}. {name}: {score}'
-        paragraphs.append(rating)
+        paragraphs.append('Рейтинг игроков в крокодила:\n' + get_rating_list(croco_rating))
 
     bot.send_message(message.chat.id, '\n\n'.join(paragraphs))
 
