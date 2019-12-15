@@ -117,18 +117,18 @@ def stats_command(message):
     bot.send_message(message.chat.id, '\n\n'.join(paragraphs))
 
 
-def update_rating(rating, stat, score, maxlen):
+def update_rating(rating, name, score, maxlen):
     place = None
     for i, (_, rating_score) in enumerate(rating):
         if score > rating_score:
             place = i
             break
     if place is not None:
-        rating.insert(place, (stat['name'], score))
+        rating.insert(place, (name, score))
         if len(rating) > maxlen:
             rating.pop(-1)
     elif len(rating) < maxlen:
-        rating.append((stat['name'], score))
+        rating.append((name, score))
 
 
 def get_rating_list(rating):
@@ -147,9 +147,9 @@ def rating_command(message):
     croco_rating = []
     for stats in chat_stats:
         if 'total' in stats:
-            update_rating(mafia_rating, stats, get_mafia_score(stats), 5)
+            update_rating(mafia_rating, stats['name'], get_mafia_score(stats), 5)
         if 'croco' in stats:
-            update_rating(croco_rating, stats, get_croco_score(stats), 3)
+            update_rating(croco_rating, stats['name'], get_croco_score(stats), 3)
 
     paragraphs = []
     if mafia_rating:
