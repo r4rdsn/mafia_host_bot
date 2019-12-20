@@ -1,5 +1,7 @@
+*[Read this in English.](README.en.md)*
+
 # Ведущий Мафии
-[Этот репозиторий](https://github.com/r4rdsn/mafia_host_bot) содержит исходный код для Телеграм-бота [@mafia_host_bot](https://t.me/mafia_host_bot).  
+[Этот репозиторий](https://gitlab.com/r4rdsn/mafia_host_bot) содержит исходный код для Телеграм-бота [@mafia_host_bot](https://t.me/mafia_host_bot).  
 Ведущий Мафии может проводить коллективные игры в мафию и крокодила в группах и супергруппах.
 
 
@@ -28,7 +30,7 @@
 # Инструкция по установке и запуску на сервере GNU/Linux
 * Установить [Python](https://www.python.org/downloads) версии не менее 3.6.0
 * Клонировать репозиторий:  
-```$ git clone https://github.com/r4rdsn/mafia_host_bot```
+```$ git clone https://gitlab.com/r4rdsn/mafia_host_bot```
 * Установить зависимости:  
 ```# pip install -r mafia_host_bot/requirements.txt```
 * Скопировать файл ```config.py.sample``` в локальном репозитории:  
@@ -48,4 +50,4 @@
 
 
 # Лицензия
-Ведущий Мафии опубликован в соответствии с условиями GNU General Public License v3.
+Ведущий Мафии опубликован в соответствии с условиями [GNU General Public License v3](COPYING).
