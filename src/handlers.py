@@ -67,7 +67,7 @@ def get_croco_score(stats):
     result = 3 * stats['croco'].get('win', 0)
     result += stats['croco'].get('guesses', 0)
     result -= stats['croco'].get('cheat', 0)
-    return result
+    return result / 25
 
 
 @bot.message_handler(commands=['stats'])
