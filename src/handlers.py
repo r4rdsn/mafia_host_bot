@@ -957,7 +957,7 @@ def croco_suggestion(message, game):
             inc_dict['croco.win'] = 1
             database.stats.update_one(
                 {'id': message.from_user.id, 'chat': game['chat']},
-                {'$inc': {'croco.guesses': 1}},
+                {'$set': {'name': get_full_name(message.from_user)}, '$inc': {'croco.guesses': 1}},
                 upsert=True
             )
             bot.reply_to(message, 'Игра окончена! Это верное слово!')
