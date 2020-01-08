@@ -47,7 +47,11 @@ def user_object(user):
     return {'id': user.id, 'name': get_name(user), 'full_name': get_full_name(user)}
 
 
-@bot.message_handler(commands=['help'])
+def command_regexp(command):
+    return f'^/{command}(@{bot.get_me().username})?$'
+
+
+@bot.message_handler(regexp=command_regexp('help'))
 @bot.message_handler(func=lambda message: message.chat.type == 'private', commands=['start'])
 def start_command(message):
     answer = (
@@ -70,7 +74,7 @@ def get_croco_score(stats):
     return result / 25
 
 
-@bot.message_handler(commands=['stats'])
+@bot.message_handler(regexp=command_regexp('stats'))
 def stats_command(message):
     stats = database.stats.find_one({'id': message.from_user.id, 'chat': message.chat.id})
 
@@ -135,7 +139,7 @@ def get_rating_list(rating):
     return '\n'.join(f'{i + 1}. {n}: {s}' for i, (n, s) in enumerate(rating))
 
 
-@bot.message_handler(commands=['rating'])
+@bot.message_handler(regexp=command_regexp('rating'))
 def rating_command(message):
     chat_stats = database.stats.find({'chat': message.chat.id})
 
@@ -160,7 +164,7 @@ def rating_command(message):
     bot.send_message(message.chat.id, '\n\n'.join(paragraphs))
 
 
-@bot.group_message_handler(commands=['croco'])
+@bot.group_message_handler(regexp=command_regexp('croco'))
 def play_croco(message, game):
     if database.croco.find_one({'chat': message.chat.id}):
         bot.send_message(message.chat.id, 'Игра в этом чате уже идёт.')
@@ -192,9 +196,7 @@ def play_croco(message, game):
     )
 
 
-@bot.callback_query_handler(
-    func=lambda call: call.data.startswith('get_word')
-)
+@bot.callback_query_handler(func=lambda call: call.data.startswith('get_word'))
 def get_word(call):
     game = database.croco.find_one({'id': call.data.split()[1], 'player': call.from_user.id})
     if game:
@@ -211,9 +213,7 @@ def get_word(call):
         )
 
 
-@bot.callback_query_handler(
-    func=lambda call: call.data == 'take card',
-)
+@bot.callback_query_handler(func=lambda call: call.data == 'take card')
 def take_card(call):
     player_game = database.games.find_one({
         'stage': -4,
@@ -292,9 +292,7 @@ def take_card(call):
         )
 
 
-@bot.callback_query_handler(
-    func=lambda call: call.data == 'mafia team'
-)
+@bot.callback_query_handler(func=lambda call: call.data == 'mafia team')
 def mafia_team(call):
     player_game = database.games.find_one({
         'players': {'$elemMatch': {
@@ -308,8 +306,8 @@ def mafia_team(call):
         bot.answer_callback_query(
             callback_query_id=call.id,
             show_alert=True,
-            text='Ты играешь в следующей команде:\n' + format_roles(player_game, True, lambda p: p['role'] in ('don', 'mafia'))
-        )
+            text='Ты играешь в следующей команде:\n' +
+            format_roles(player_game, True, lambda p: p['role'] in ('don', 'mafia')))
 
     else:
         bot.answer_callback_query(
@@ -319,9 +317,7 @@ def mafia_team(call):
         )
 
 
-@bot.callback_query_handler(
-    func=lambda call: call.data.startswith('check don'),
-)
+@bot.callback_query_handler(func=lambda call: call.data.startswith('check don'))
 def check_don(call):
     player_game = database.games.find_one({
         'stage': 5,
@@ -354,9 +350,7 @@ def check_don(call):
         )
 
 
-@bot.callback_query_handler(
-    func=lambda call: call.data.startswith('check sheriff'),
-)
+@bot.callback_query_handler(func=lambda call: call.data.startswith('check sheriff'))
 def check_sheriff(call):
     player_game = database.games.find_one({
         'stage': 6,
@@ -391,9 +385,7 @@ def check_sheriff(call):
         )
 
 
-@bot.callback_query_handler(
-    func=lambda call: call.data.startswith('append to order'),
-)
+@bot.callback_query_handler(func=lambda call: call.data.startswith('append to order'))
 def append_order(call):
     player_game = database.games.find_one({
         'stage': -2,
@@ -426,9 +418,7 @@ def append_order(call):
         )
 
 
-@bot.callback_query_handler(
-    func=lambda call: call.data.startswith('vote'),
-)
+@bot.callback_query_handler(func=lambda call: call.data.startswith('vote'))
 def vote(call):
     player_game = database.games.find_one({
         'stage': 1,
@@ -486,9 +476,7 @@ def vote(call):
         )
 
 
-@bot.callback_query_handler(
-    func=lambda call: call.data == 'end order',
-)
+@bot.callback_query_handler(func=lambda call: call.data == 'end order')
 def end_order(call):
     player_game = database.games.find_one({
         'stage': -2,
@@ -554,9 +542,7 @@ def get_order(call):
         )
 
 
-@bot.callback_query_handler(
-    func=lambda call: call.data == 'request interact'
-)
+@bot.callback_query_handler(func=lambda call: call.data == 'request interact')
 def request_interact(call):
     message_id = call.message.message_id
     required_request = database.requests.find_one({'message_id': message_id})
@@ -624,7 +610,7 @@ def request_interact(call):
         bot.edit_message_text('Заявка больше не существует.', chat_id=call.message.chat.id, message_id=message_id)
 
 
-@bot.group_message_handler(commands=['create'])
+@bot.group_message_handler(regexp=command_regexp('create'))
 def create(message, game):
     existing_request = database.requests.find_one({'chat': message.chat.id})
     if existing_request:
@@ -660,7 +646,7 @@ def create(message, game):
     })
 
 
-@bot.group_message_handler(commands=['start'])
+@bot.group_message_handler(regexp=command_regexp('start'))
 def start_game(message, game):
     req = database.requests.find_and_modify(
         {
@@ -716,7 +702,7 @@ def start_game(message, game):
         bot.send_message(message.chat.id, 'У тебя нет заявки на игру, которую возможно начать.')
 
 
-@bot.group_message_handler(commands=['cancel'])
+@bot.group_message_handler(regexp=command_regexp('cancel'))
 def cancel(message, game):
     req = database.requests.find_one_and_delete({
         'owner.id': message.from_user.id,
@@ -795,12 +781,12 @@ def create_poll(message, game, poll_type, suggestion):
     database.polls.insert_one(poll)
 
 
-@bot.group_message_handler(commands=['end'])
+@bot.group_message_handler(regexp=command_regexp('end'))
 def force_game_end(message, game):
     create_poll(message, game, 'end', 'закончить игру')
 
 
-@bot.group_message_handler(commands=['skip'])
+@bot.group_message_handler(regexp=command_regexp('skip'))
 def skip_current_stage(message, game):
     create_poll(message, game, 'skip', 'пропустить текущую стадию')
 
@@ -889,9 +875,7 @@ def poll_vote(call):
     )
 
 
-@bot.callback_query_handler(
-    func=lambda call: call.data == 'shot'
-)
+@bot.callback_query_handler(func=lambda call: call.data == 'shot')
 def callback_inline(call):
     player_game = database.games.find_one({
         'stage': 4,
@@ -929,7 +913,7 @@ def callback_inline(call):
 
 @bot.message_handler(
     func=lambda message: message.from_user.id == config.ADMIN_ID,
-    commands=['reset']
+    regexp=command_regexp('reset')
 )
 def reset(message):
     database.games.delete_many({})
@@ -938,7 +922,7 @@ def reset(message):
 
 @bot.message_handler(
     func=lambda message: message.from_user.id == config.ADMIN_ID,
-    commands=['database']
+    regexp=command_regexp('database')
 )
 def print_database(message):
     print(list(database.games.find()))
