@@ -21,6 +21,7 @@ from . import croco
 from .game import role_titles, stop_game
 from .stages import stages, go_to_next_stage, format_roles, get_votes
 from .bot import bot
+from .gallows import gallows_suggestion
 
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
@@ -193,6 +194,27 @@ def play_croco(message, game):
         message.chat.id,
         f'Игра началась! {name.capitalize()}, у тебя есть две минуты, чтобы объяснить слово.',
         reply_markup=keyboard
+    )
+
+
+@bot.group_message_handler(regexp=command_regexp('gallows'))
+def play_gallows(message):
+    chat_id = message.chat.id
+    if database.gallows.find_one({'chat': chat_id}):
+        bot.send_message(chat_id, 'Игра в этом чате уже идёт')
+        return
+    word = croco.get_word()[:-2]
+    _id = str(uuid4())[:8]
+    word_in_underlines = ['_'] * len(word)
+    database.gallows.insert_one({
+        '_id': _id,
+        'chat': chat_id,
+        'word': word,
+        'word_in_underlines': word_in_underlines,
+        'attempts': 6
+    })
+    bot.send_message(
+        chat_id, f'{"".join(word_in_underlines)}\nУ вас есть 6 попыток.'
     )
 
 
@@ -930,7 +952,10 @@ def print_database(message):
 
 
 @bot.group_message_handler(content_types=['text'])
-def croco_suggestion(message, game):
+def game_suggestion(message, game):
+    if len(message.text) == 1:
+        gallows_suggestion(message.text, message.chat.id)
+        return
     game = database.croco.find_one({'chat': message.chat.id})
     if game and message.text is not None and re.search(r'\b{}\b'.format(game['word']), message.text.lower().replace('ё', 'е')):
         inc_dict = {'croco.total': 1}
