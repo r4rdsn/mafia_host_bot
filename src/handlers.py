@@ -201,20 +201,18 @@ def play_croco(message, game):
 def play_gallows(message):
     chat_id = message.chat.id
     if database.gallows.find_one({'chat': chat_id}):
-        bot.send_message(chat_id, 'Игра в этом чате уже идёт')
+        bot.send_message(chat_id, 'Игра в этом чате уже идёт.')
         return
     word = croco.get_word()[:-2]
-    _id = str(uuid4())[:8]
     word_in_underlines = ['_'] * len(word)
     database.gallows.insert_one({
-        '_id': _id,
         'chat': chat_id,
         'word': word,
         'word_in_underlines': word_in_underlines,
-        'attempts': 6
+        'attempts': len(gallows.stickman)
     })
     bot.send_message(
-        chat_id, f'{"".join(word_in_underlines)}\nУ вас есть 6 попыток.'
+        chat_id, f'<code>{gallows.stickman[0]}</code>\n{" ".join(word_in_underlines)}', parse_mode='HTML'
     )
 
 
