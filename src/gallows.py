@@ -1,73 +1,14 @@
 from .bot import bot
-from . import croco
 from .database import database
-
-from uuid import uuid4
+from . import lang
 
 stickman = [
-"""
-___________
-|         |
-|         
-|        
-|        
-|
-|
-""",
-"""
-___________
-|         |
-|         0
-|        
-|        
-|
-|
-""",
-"""
-___________
-|         |
-|         0
-|         |
-|        
-|
-|
-""",
-"""
-___________
-|         |
-|         0
-|        /|
-|        
-|
-|
-""",
-r"""
-___________
-|         |
-|         0
-|        /|\
-|        
-|
-|
-""",
-r"""
-___________
-|         |
-|         0
-|        /|\
-|        / 
-|
-|
-""",
-r"""
-___________
-|         |
-|         0
-|        /|\
-|        / \
-|
-|
-"""
+    ('', '', ''),
+    (' 0 ', '', ''),
+    (' 0 ', ' | ', ''),
+    (' 0 ', '/|', ''),
+    (' 0 ', '/|\\', '/'),
+    (' 0 ', '/|\\', '/ \\')
 ]
 
 
@@ -89,8 +30,10 @@ def gallows_suggestion(text, chat_id):
             if game['word_in_underlines'] == splitted_word:
                 bot.send_message(
                     chat_id,
-                    f'<code>{stickman[-(game["attempts"])]}</code>\n'
-                    f'Победа.\nСлово: {" ".join(game["word_in_underlines"])}',
+                    lang.gallows.format(
+                        result='Вы победили.\n',
+                        word=' '.join(game['word_in_underlines'])
+                    ) % stickman[-game['attempts']],
                     parse_mode='HTML'
                 )
                 database.gallows.delete_one({'_id': game['_id']})
@@ -101,8 +44,10 @@ def gallows_suggestion(text, chat_id):
             )
             bot.send_message(
                 chat_id,
-                f'<code>{stickman[-(game["attempts"])]}</code>\n'
-                f'Слово: {" ".join(game["word_in_underlines"])}',
+                lang.gallows.format(
+                    result='',
+                    word=' '.join(game['word_in_underlines'])
+                ) % stickman[-game['attempts']],
                 parse_mode='HTML'
             )
             return
@@ -110,17 +55,22 @@ def gallows_suggestion(text, chat_id):
             {'chat': game['chat']},
             {'$inc': {'attempts': -1}}
         )
-        if game['attempts']-1 > 1:
+        if game['attempts'] - 1 > 1:
             bot.send_message(
-                chat_id, 
-                f'<code>{stickman[-(game["attempts"]-1)]}</code>'
-                f'\nСлово: {" ".join(game["word_in_underlines"])}',
+                chat_id,
+                lang.gallows.format(
+                    result='',
+                    word=' '.join(game["word_in_underlines"])
+                ) % stickman[-game['attempts'] + 1],
                 parse_mode='HTML'
             )
             return
         bot.send_message(
             chat_id,
-            f'<code>{stickman[-(game["attempts"]-1)]}</code>\n'
-            f'Вы проиграли. Загаданным словом было: {game["word"]}.'
+            lang.gallows.format(
+                result='Вы проиграли.\n',
+                word=' '.join(list(game["word"]))
+            ) % stickman[-1],
+            parse_mode='HTML'
         )
         database.gallows.delete_one({'_id': game['_id']})

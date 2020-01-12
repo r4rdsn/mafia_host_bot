@@ -212,7 +212,12 @@ def play_gallows(message, *args, **kwargs):
         'attempts': len(gallows.stickman)
     })
     bot.send_message(
-        chat_id, f'<code>{gallows.stickman[0]}</code>\n{" ".join(word_in_underlines)}', parse_mode='HTML'
+        chat_id,
+        lang.gallows.format(
+            result='',
+            word=' '.join(word_in_underlines)
+        ) % gallows.stickman[0],
+        parse_mode='HTML'
     )
 
 
