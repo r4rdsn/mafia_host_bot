@@ -46,7 +46,7 @@ def is_game_over(game):
 
 def stage_cycle():
     while True:
-        games_to_modify = database.games.find({'next_stage_time': {'$lte': time()}})
+        games_to_modify = database.games.find({'game': 'mafia', 'next_stage_time': {'$lte': time()}})
         for game in games_to_modify:
             game_state = is_game_over(game)
             if game_state:
@@ -74,13 +74,13 @@ def stage_cycle():
 def croco_cycle():
     while True:
         curtime = time()
-        games = list(database.croco.find({'time': {'$lte': curtime}}))
+        games = list(database.games.find({'game': 'croco', 'time': {'$lte': curtime}}))
         for game in games:
             if game['stage'] == 0:
-                database.croco.update_one({'_id': game['_id']}, {'$set': {'stage': 1, 'time': curtime + 60}})
+                database.games.update_one({'_id': game['_id']}, {'$set': {'stage': 1, 'time': curtime + 60}})
                 bot.try_to_send_message(game['chat'], f'{game["name"].capitalize()}, до конца игры осталась минута!')
             else:
-                database.croco.delete_one({'_id': game['_id']})
+                database.games.delete_one({'_id': game['_id']})
                 bot.try_to_send_message(game['chat'], f'Игра окончена! {game["name"].capitalize()} проигрывает, загаданное слово было {game["word"]}.')
                 database.stats.update_one(
                     {'id': game['player'], 'chat': game['chat']},

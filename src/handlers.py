@@ -166,8 +166,8 @@ def rating_command(message, *args, **kwargs):
 
 
 @bot.group_message_handler(regexp=command_regexp('croco'))
-def play_croco(message, *args, **kwargs):
-    if database.croco.find_one({'chat': message.chat.id}):
+def play_croco(message, game, *args, **kwargs):
+    if game:
         bot.send_message(message.chat.id, 'Игра в этом чате уже идёт.')
         return
     word = croco.get_word()[:-2]
@@ -180,7 +180,8 @@ def play_croco(message, *args, **kwargs):
         )
     )
     name = get_name(message.from_user)
-    database.croco.insert_one({
+    database.games.insert_one({
+        'game': 'croco',
         'id': id,
         'player': message.from_user.id,
         'name': name,
@@ -198,20 +199,20 @@ def play_croco(message, *args, **kwargs):
 
 
 @bot.group_message_handler(regexp=command_regexp('gallows'))
-def play_gallows(message, *args, **kwargs):
-    chat_id = message.chat.id
-    if database.gallows.find_one({'chat': chat_id}):
-        bot.send_message(chat_id, 'Игра в этом чате уже идёт.')
+def play_gallows(message, game, *args, **kwargs):
+    if game:
+        bot.send_message(message.chat.id, 'Игра в этом чате уже идёт.')
         return
     word = croco.get_word()[:-2]
-    database.gallows.insert_one({
-        'chat': chat_id,
+    database.games.insert_one({
+        'game': 'gallows',
+        'chat': message.chat.id,
         'word': word,
         'wrong': [],
         'right': []
     })
     bot.send_message(
-        chat_id,
+        message.chat.id,
         lang.gallows.format(result='', word=' '.join(['_'] * len(word))) % gallows.stickman[0],
         parse_mode='HTML'
     )
@@ -219,7 +220,9 @@ def play_gallows(message, *args, **kwargs):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('get_word'))
 def get_word(call):
-    game = database.croco.find_one({'id': call.data.split()[1], 'player': call.from_user.id})
+    game = database.games.find_one(
+        {'game': 'croco', 'id': call.data.split()[1], 'player': call.from_user.id}
+    )
     if game:
         bot.answer_callback_query(
             callback_query_id=call.id,
@@ -237,6 +240,7 @@ def get_word(call):
 @bot.callback_query_handler(func=lambda call: call.data == 'take card')
 def take_card(call):
     player_game = database.games.find_one({
+        'game': 'mafia',
         'stage': -4,
         'players.id': call.from_user.id,
         'chat': call.message.chat.id,
@@ -316,6 +320,7 @@ def take_card(call):
 @bot.callback_query_handler(func=lambda call: call.data == 'mafia team')
 def mafia_team(call):
     player_game = database.games.find_one({
+        'game': 'mafia',
         'players': {'$elemMatch': {
             'id': call.from_user.id,
             'role': {'$in': ['don', 'mafia']},
@@ -341,6 +346,7 @@ def mafia_team(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('check don'))
 def check_don(call):
     player_game = database.games.find_one({
+        'game': 'mafia',
         'stage': 5,
         'players': {'$elemMatch': {
             'alive': True,
@@ -374,6 +380,7 @@ def check_don(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('check sheriff'))
 def check_sheriff(call):
     player_game = database.games.find_one({
+        'game': 'mafia',
         'stage': 6,
         'players': {'$elemMatch': {
             'alive': True,
@@ -409,6 +416,7 @@ def check_sheriff(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('append to order'))
 def append_order(call):
     player_game = database.games.find_one({
+        'game': 'mafia',
         'stage': -2,
         'players': {'$elemMatch': {
             'role': 'don',
@@ -442,6 +450,7 @@ def append_order(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('vote'))
 def vote(call):
     player_game = database.games.find_one({
+        'game': 'mafia',
         'stage': 1,
         'players': {'$elemMatch': {
             'alive': True,
@@ -500,6 +509,7 @@ def vote(call):
 @bot.callback_query_handler(func=lambda call: call.data == 'end order')
 def end_order(call):
     player_game = database.games.find_one({
+        'game': 'mafia',
         'stage': -2,
         'players': {'$elemMatch': {
             'role': 'don',
@@ -530,6 +540,7 @@ def end_order(call):
 )
 def get_order(call):
     player_game = database.games.find_one({
+        'game': 'mafia',
         '$or': [
             {'players': {'$elemMatch': {
                 'role': 'don',
@@ -705,6 +716,7 @@ def start_game(message, *args, **kwargs):
         ).message_id
 
         database.games.insert_one({
+            'game': 'mafia',
             'chat': req['chat'],
             'id': req['id'],
             'stage': stage_number,
@@ -834,6 +846,7 @@ def poll_vote(call):
         return
 
     player_game = database.games.find_one({
+        'game': 'mafia',
         'players': {'$elemMatch': {
             'alive': True,
             'id': call.from_user.id
@@ -899,6 +912,7 @@ def poll_vote(call):
 @bot.callback_query_handler(func=lambda call: call.data == 'shot')
 def callback_inline(call):
     player_game = database.games.find_one({
+        'game': 'mafia',
         'stage': 4,
         'players': {'$elemMatch': {
             'alive': True,
@@ -951,15 +965,14 @@ def print_database(message, *args, **kwargs):
 
 
 @bot.group_message_handler(content_types=['text'])
-def game_suggestion(message, *args, **kwargs):
-    if message.text is None:
+def game_suggestion(message, game, *args, **kwargs):
+    if not game or message.text is None:
         return
     suggestion = message.text.lower().replace('ё', 'е')
-    if len(suggestion) == 1 and 'А' <= suggestion <= 'я':
-        gallows.gallows_suggestion(suggestion, message.chat.id)
+    if game['game'] == 'gallows':
+        gallows.gallows_suggestion(suggestion, game)
         return
-    game = database.croco.find_one({'chat': message.chat.id})
-    if game and re.search(r'\b{}\b'.format(game['word']), suggestion):
+    elif game['game'] == 'croco' and re.search(r'\b{}\b'.format(game['word']), suggestion):
         inc_dict = {'croco.total': 1}
         if message.from_user.id == game['player']:
             inc_dict['croco.cheat'] = 1
@@ -972,7 +985,7 @@ def game_suggestion(message, *args, **kwargs):
                 upsert=True
             )
             bot.reply_to(message, 'Игра окончена! Это верное слово!')
-        database.croco.delete_one({'_id': game['_id']})
+        database.games.delete_one({'_id': game['_id']})
         database.stats.update_one(
             {'id': game['player'], 'chat': game['chat']},
             {'$set': {'name': game['full_name']}, '$inc': inc_dict},

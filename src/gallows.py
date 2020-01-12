@@ -1,3 +1,5 @@
+import re
+
 from .bot import bot
 from .database import database
 from . import lang
@@ -13,19 +15,35 @@ stickman = [
 ]
 
 
-def gallows_suggestion(letter, chat_id):
-    game = database.gallows.find_one({'chat': chat_id})
+def win_game(game):
+    bot.send_message(
+        game['chat'],
+        lang.gallows.format(
+            result='Вы победили.\n', word=' '.join(list(game['word']))
+        ) % stickman[len(game['wrong'])],
+        parse_mode='HTML'
+    )
+    database.games.delete_one({'_id': game['_id']})
+
+
+def gallows_suggestion(suggestion, game):
     if not game:
         return
-    if letter in game['wrong'] or letter in game['right']:
-        bot.send_message(chat_id, 'Эта буква уже выбиралась.')
+
+    if len(suggestion) > 1:
+        if re.search(r'\b{}\b'.format(suggestion), game['word']):
+            win_game(game)
+        return
+
+    if suggestion in game['wrong'] or suggestion in game['right']:
+        bot.send_message(game['chat'], 'Эта буква уже выбиралась.')
         return
 
     word = list(game['word'])
     word_in_underlines = []
     has_letter = False
     for ch in word:
-        if ch == letter:
+        if ch == suggestion:
             word_in_underlines.append(ch)
             has_letter = True
         elif ch in game['right']:
@@ -34,30 +52,25 @@ def gallows_suggestion(letter, chat_id):
             word_in_underlines.append('_')
 
     if has_letter:
-        attempts = len(game['wrong'])
         if word_in_underlines == word:
-            bot.send_message(
-                chat_id,
-                lang.gallows.format(result='Вы победили.\n', word=' '.join(word)) % stickman[attempts],
-                parse_mode='HTML'
-            )
-            database.gallows.delete_one({'_id': game['_id']})
+            win_game(game)
             return
-        database.gallows.update_one({'chat': game['chat']}, {'$addToSet': {'right': letter}})
+        attempts = len(game['wrong'])
+        database.games.update_one({'_id': game['_id']}, {'$addToSet': {'right': suggestion}})
     else:
-        attempts = len(game['wrong']) + 1
         if len(game['wrong']) >= len(stickman) - 2:
             bot.send_message(
-                chat_id,
+                game['chat'],
                 lang.gallows.format(result='Вы проиграли.\n', word=' '.join(word)) % stickman[-1],
                 parse_mode='HTML'
             )
-            database.gallows.delete_one({'_id': game['_id']})
+            database.games.delete_one({'_id': game['_id']})
             return
-        database.gallows.update_one({'chat': game['chat']}, {'$addToSet': {'wrong': letter}})
+        attempts = len(game['wrong']) + 1
+        database.games.update_one({'_id': game['_id']}, {'$addToSet': {'wrong': suggestion}})
 
     bot.send_message(
-        chat_id,
+        game['chat'],
         lang.gallows.format(result='', word=' '.join(word_in_underlines)) % stickman[attempts],
         parse_mode='HTML'
     )

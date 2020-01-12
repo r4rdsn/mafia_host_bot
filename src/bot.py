@@ -35,22 +35,26 @@ class MafiaHostBot(TeleBot):
 
     def _game_handler(self, handler):
         def decorator(message, *args, **kwargs):
-            game = database.games.find_one({'players.id': message.from_user.id, 'chat': message.chat.id})
-            if game:
-                player = next(p for p in game['players'] if p['id'] == message.from_user.id)
-                delete = False
-                if game['stage'] in (2, 7):
-                    victim = game.get('victim')
-                    if victim is not None and victim != message.from_user.id:
+            game = database.games.find_one({'chat': message.chat.id})
+            if game and game['game'] == 'mafia':
+                try:
+                    player = next(p for p in game['players'] if p['id'] == message.from_user.id)
+                except StopIteration:
+                    pass
+                else:
+                    delete = False
+                    if game['stage'] in (2, 7):
+                        victim = game.get('victim')
+                        if victim is not None and victim != message.from_user.id:
+                            delete = True
+                    elif not player.get('alive', True) or game['stage'] not in (0, -4):
                         delete = True
-                elif not player.get('alive', True) or game['stage'] not in (0, -4):
-                    delete = True
-                if delete:
-                    try:
-                        self.delete_message(chat_id=message.chat.id, message_id=message.message_id)
-                    except ApiException:
-                        logger.error('Ошибка API при удалении сообщения', exc_info=True)
-                    return
+                    if delete:
+                        try:
+                            self.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+                        except ApiException:
+                            logger.error('Ошибка API при удалении сообщения', exc_info=True)
+                        return
 
             return handler(message, game, *args, **kwargs)
         return decorator
