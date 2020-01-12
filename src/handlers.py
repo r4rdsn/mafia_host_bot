@@ -201,12 +201,15 @@ def play_croco(message, game, *args, **kwargs):
 @bot.group_message_handler(regexp=command_regexp('gallows'))
 def play_gallows(message, game, *args, **kwargs):
     if game:
-        bot.send_message(message.chat.id, 'Игра в этом чате уже идёт.')
+        if game['game'] == 'gallows':
+            bot.send_message(message.chat.id, 'Игра в этом чате уже идёт.', reply_to_message_id=game['message_id'])
+        else:
+            bot.send_message(message.chat.id, 'Игра в этом чате уже идёт.')
         return
     word = croco.get_word()[:-2]
     sent_message = bot.send_message(
         message.chat.id,
-        lang.gallows.format(result='', word=' '.join(['_'] * len(word))) % gallows.stickman[0],
+        lang.gallows.format(result='', word=' '.join(['_'] * len(word)), attempts='') % gallows.stickman[0],
         parse_mode='HTML'
     )
     database.games.insert_one({
