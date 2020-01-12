@@ -18,10 +18,10 @@ import config
 from .database import database
 from . import lang
 from . import croco
+from . import gallows
 from .game import role_titles, stop_game
 from .stages import stages, go_to_next_stage, format_roles, get_votes
 from .bot import bot
-from .gallows import gallows_suggestion
 
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
@@ -54,7 +54,7 @@ def command_regexp(command):
 
 @bot.message_handler(regexp=command_regexp('help'))
 @bot.message_handler(func=lambda message: message.chat.type == 'private', commands=['start'])
-def start_command(message):
+def start_command(message, *args, **kwargs):
     answer = (
         f'Привет, я {bot.get_me().first_name}!\n'
         'Я умею создавать игры в мафию в группах и супергруппах.\n'
@@ -76,7 +76,7 @@ def get_croco_score(stats):
 
 
 @bot.message_handler(regexp=command_regexp('stats'))
-def stats_command(message):
+def stats_command(message, *args, **kwargs):
     stats = database.stats.find_one({'id': message.from_user.id, 'chat': message.chat.id})
 
     if not stats:
@@ -141,7 +141,7 @@ def get_rating_list(rating):
 
 
 @bot.message_handler(regexp=command_regexp('rating'))
-def rating_command(message):
+def rating_command(message, *args, **kwargs):
     chat_stats = database.stats.find({'chat': message.chat.id})
 
     if not chat_stats:
@@ -166,7 +166,7 @@ def rating_command(message):
 
 
 @bot.group_message_handler(regexp=command_regexp('croco'))
-def play_croco(message, game):
+def play_croco(message, *args, **kwargs):
     if database.croco.find_one({'chat': message.chat.id}):
         bot.send_message(message.chat.id, 'Игра в этом чате уже идёт.')
         return
@@ -198,7 +198,7 @@ def play_croco(message, game):
 
 
 @bot.group_message_handler(regexp=command_regexp('gallows'))
-def play_gallows(message):
+def play_gallows(message, *args, **kwargs):
     chat_id = message.chat.id
     if database.gallows.find_one({'chat': chat_id}):
         bot.send_message(chat_id, 'Игра в этом чате уже идёт.')
@@ -631,7 +631,7 @@ def request_interact(call):
 
 
 @bot.group_message_handler(regexp=command_regexp('create'))
-def create(message, game):
+def create(message, *args, **kwargs):
     existing_request = database.requests.find_one({'chat': message.chat.id})
     if existing_request:
         bot.send_message(message.chat.id, 'В этом чате уже есть игра!', reply_to_message_id=existing_request['message_id'])
@@ -667,7 +667,7 @@ def create(message, game):
 
 
 @bot.group_message_handler(regexp=command_regexp('start'))
-def start_game(message, game):
+def start_game(message, *args, **kwargs):
     req = database.requests.find_and_modify(
         {
             'owner.id': message.from_user.id,
@@ -723,7 +723,7 @@ def start_game(message, game):
 
 
 @bot.group_message_handler(regexp=command_regexp('cancel'))
-def cancel(message, game):
+def cancel(message, *args, **kwargs):
     req = database.requests.find_one_and_delete({
         'owner.id': message.from_user.id,
         'chat': message.chat.id
@@ -802,12 +802,12 @@ def create_poll(message, game, poll_type, suggestion):
 
 
 @bot.group_message_handler(regexp=command_regexp('end'))
-def force_game_end(message, game):
+def force_game_end(message, game, *args, **kwargs):
     create_poll(message, game, 'end', 'закончить игру')
 
 
 @bot.group_message_handler(regexp=command_regexp('skip'))
-def skip_current_stage(message, game):
+def skip_current_stage(message, game, *args, **kwargs):
     create_poll(message, game, 'skip', 'пропустить текущую стадию')
 
 
@@ -935,7 +935,7 @@ def callback_inline(call):
     func=lambda message: message.from_user.id == config.ADMIN_ID,
     regexp=command_regexp('reset')
 )
-def reset(message):
+def reset(message, *args, **kwargs):
     database.games.delete_many({})
     bot.send_message(message.chat.id, 'База игр сброшена!')
 
@@ -944,15 +944,15 @@ def reset(message):
     func=lambda message: message.from_user.id == config.ADMIN_ID,
     regexp=command_regexp('database')
 )
-def print_database(message):
+def print_database(message, *args, **kwargs):
     print(list(database.games.find()))
     bot.send_message(message.chat.id, 'Все документы базы данных игр выведены в терминал!')
 
 
 @bot.group_message_handler(content_types=['text'])
-def game_suggestion(message, game):
+def game_suggestion(message, *args, **kwargs):
     if len(message.text) == 1:
-        gallows_suggestion(message.text, message.chat.id)
+        gallows.gallows_suggestion(message.text, message.chat.id)
         return
     game = database.croco.find_one({'chat': message.chat.id})
     if game and message.text is not None and re.search(r'\b{}\b'.format(game['word']), message.text.lower().replace('ё', 'е')):
@@ -977,5 +977,5 @@ def game_suggestion(message, game):
 
 
 @bot.group_message_handler()
-def default_handler(message, game):
+def default_handler(message, *args, **kwargs):
     pass
