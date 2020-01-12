@@ -204,19 +204,15 @@ def play_gallows(message, *args, **kwargs):
         bot.send_message(chat_id, 'Игра в этом чате уже идёт.')
         return
     word = croco.get_word()[:-2]
-    word_in_underlines = ['_'] * len(word)
     database.gallows.insert_one({
         'chat': chat_id,
         'word': word,
-        'word_in_underlines': word_in_underlines,
-        'attempts': len(gallows.stickman)
+        'wrong': [],
+        'right': []
     })
     bot.send_message(
         chat_id,
-        lang.gallows.format(
-            result='',
-            word=' '.join(word_in_underlines)
-        ) % gallows.stickman[0],
+        lang.gallows.format(result='', word=' '.join(['_'] * len(word))) % gallows.stickman[0],
         parse_mode='HTML'
     )
 
