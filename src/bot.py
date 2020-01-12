@@ -50,10 +50,7 @@ class MafiaHostBot(TeleBot):
                     elif not player.get('alive', True) or game['stage'] not in (0, -4):
                         delete = True
                     if delete:
-                        try:
-                            self.delete_message(chat_id=message.chat.id, message_id=message.message_id)
-                        except ApiException:
-                            logger.error('Ошибка API при удалении сообщения', exc_info=True)
+                        self.safely_delete_message(chat_id=message.chat.id, message_id=message.message_id)
                         return
 
             return handler(message, game, *args, **kwargs)
@@ -71,6 +68,12 @@ class MafiaHostBot(TeleBot):
             self.add_message_handler(handler_dict)
             return new_handler
         return decorator
+
+    def safely_delete_message(self, *args, **kwargs):
+        try:
+            self.delete_message(*args, **kwargs)
+        except ApiException:
+            logger.error('Ошибка API при удалении сообщения', exc_info=True)
 
 
 bot = MafiaHostBot(config.TOKEN)

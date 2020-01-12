@@ -204,18 +204,19 @@ def play_gallows(message, game, *args, **kwargs):
         bot.send_message(message.chat.id, 'Игра в этом чате уже идёт.')
         return
     word = croco.get_word()[:-2]
+    sent_message = bot.send_message(
+        message.chat.id,
+        lang.gallows.format(result='', word=' '.join(['_'] * len(word))) % gallows.stickman[0],
+        parse_mode='HTML'
+    )
     database.games.insert_one({
         'game': 'gallows',
         'chat': message.chat.id,
         'word': word,
         'wrong': [],
-        'right': []
+        'right': [],
+        'message_id': sent_message.message_id
     })
-    bot.send_message(
-        message.chat.id,
-        lang.gallows.format(result='', word=' '.join(['_'] * len(word))) % gallows.stickman[0],
-        parse_mode='HTML'
-    )
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('get_word'))
@@ -970,7 +971,7 @@ def game_suggestion(message, game, *args, **kwargs):
         return
     suggestion = message.text.lower().replace('ё', 'е')
     if game['game'] == 'gallows':
-        gallows.gallows_suggestion(suggestion, game)
+        gallows.gallows_suggestion(suggestion, game, message.message_id)
         return
     elif game['game'] == 'croco' and re.search(r'\b{}\b'.format(game['word']), suggestion):
         inc_dict = {'croco.total': 1}

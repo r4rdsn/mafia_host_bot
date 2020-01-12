@@ -1,8 +1,8 @@
-import re
-
 from .bot import bot
 from .database import database
 from . import lang
+
+import re
 
 stickman = [
     ('', '', ''),
@@ -15,18 +15,21 @@ stickman = [
 ]
 
 
-def win_game(game):
-    bot.send_message(
-        game['chat'],
-        lang.gallows.format(
-            result='Вы победили.\n', word=' '.join(list(game['word']))
-        ) % stickman[len(game['wrong'])],
+def set_gallows(game, result, word, stickman):
+    bot.edit_message_text(
+        lang.gallows.format(result=result + '\n', word=word) % stickman,
+        chat_id=game['chat'],
+        message_id=game['message_id'],
         parse_mode='HTML'
     )
+
+
+def win_game(game):
+    set_gallows(game, 'Вы победили!', ' '.join(list(game['word'])), stickman[len(game['wrong'])])
     database.games.delete_one({'_id': game['_id']})
 
 
-def gallows_suggestion(suggestion, game):
+def gallows_suggestion(suggestion, game, message_id):
     if not game:
         return
 
@@ -51,6 +54,8 @@ def gallows_suggestion(suggestion, game):
         else:
             word_in_underlines.append('_')
 
+    bot.safely_delete_message(chat_id=game['chat'], message_id=message_id)
+
     if has_letter:
         if word_in_underlines == word:
             win_game(game)
@@ -59,18 +64,10 @@ def gallows_suggestion(suggestion, game):
         database.games.update_one({'_id': game['_id']}, {'$addToSet': {'right': suggestion}})
     else:
         if len(game['wrong']) >= len(stickman) - 2:
-            bot.send_message(
-                game['chat'],
-                lang.gallows.format(result='Вы проиграли.\n', word=' '.join(word)) % stickman[-1],
-                parse_mode='HTML'
-            )
+            set_gallows(game, 'Вы проиграли.', ' '.join(word), stickman[-1])
             database.games.delete_one({'_id': game['_id']})
             return
         attempts = len(game['wrong']) + 1
         database.games.update_one({'_id': game['_id']}, {'$addToSet': {'wrong': suggestion}})
 
-    bot.send_message(
-        game['chat'],
-        lang.gallows.format(result='', word=' '.join(word_in_underlines)) % stickman[attempts],
-        parse_mode='HTML'
-    )
+    set_gallows(game, '', ' '.join(word_in_underlines), stickman[attempts])
