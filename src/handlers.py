@@ -952,11 +952,14 @@ def print_database(message, *args, **kwargs):
 
 @bot.group_message_handler(content_types=['text'])
 def game_suggestion(message, *args, **kwargs):
-    if len(message.text) == 1:
-        gallows.gallows_suggestion(message.text, message.chat.id)
+    if message.text is None:
+        return
+    suggestion = message.text.lower().replace('ё', 'е')
+    if len(suggestion) == 1 and 'А' <= suggestion <= 'я':
+        gallows.gallows_suggestion(suggestion, message.chat.id)
         return
     game = database.croco.find_one({'chat': message.chat.id})
-    if game and message.text is not None and re.search(r'\b{}\b'.format(game['word']), message.text.lower().replace('ё', 'е')):
+    if game and re.search(r'\b{}\b'.format(game['word']), suggestion):
         inc_dict = {'croco.total': 1}
         if message.from_user.id == game['player']:
             inc_dict['croco.cheat'] = 1
