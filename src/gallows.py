@@ -34,6 +34,7 @@ def gallows_suggestion(letter, chat_id):
             word_in_underlines.append('_')
 
     if has_letter:
+        attempts = len(game['wrong'])
         if word_in_underlines == word:
             bot.send_message(
                 chat_id,
@@ -43,8 +44,8 @@ def gallows_suggestion(letter, chat_id):
             database.gallows.delete_one({'_id': game['_id']})
             return
         database.gallows.update_one({'chat': game['chat']}, {'$addToSet': {'right': letter}})
-        attempts = len(game['wrong'])
     else:
+        attempts = len(game['wrong']) + 1
         if len(game['wrong']) >= len(stickman) - 2:
             bot.send_message(
                 chat_id,
@@ -54,7 +55,6 @@ def gallows_suggestion(letter, chat_id):
             database.gallows.delete_one({'_id': game['_id']})
             return
         database.gallows.update_one({'chat': game['chat']}, {'$addToSet': {'wrong': letter}})
-        attempts = len(game['wrong']) + 1
 
     bot.send_message(
         chat_id,
