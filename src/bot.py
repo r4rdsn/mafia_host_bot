@@ -1,4 +1,4 @@
-# Copyright (C) 2017, 2018, 2019  alfred richardsn
+# Copyright (C) 2017, 2018, 2019, 2020  alfred richardsn
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
