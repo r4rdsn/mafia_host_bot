@@ -985,31 +985,11 @@ def game_suggestion(message, game, *args, **kwargs):
     if not game or message.text is None or not all('А' <= ch <= 'я' for ch in message.text):
         return
     suggestion = message.text.lower().replace('ё', 'е')
+    user = user_object(message.from_user)
     if game['game'] == 'gallows':
-        gallows.gallows_suggestion(
-            suggestion, game, user_object(message.from_user), message.message_id
-        )
-        return
-    elif game['game'] == 'croco' and re.search(r'\b{}\b'.format(game['word']), suggestion):
-        inc_dict = {'croco.total': 1}
-        if message.from_user.id == game['player']:
-            inc_dict['croco.cheat'] = 1
-            bot.reply_to(message, 'Игра окончена! Нельзя самому называть слово!')
-        else:
-            inc_dict['croco.win'] = 1
-            database.stats.update_one(
-                {'id': message.from_user.id, 'chat': game['chat']},
-                {'$set': {'name': get_full_name(message.from_user)}, '$inc': {'croco.guesses': 1}},
-                upsert=True
-            )
-            bot.reply_to(message, 'Игра окончена! Это верное слово!')
-        database.games.delete_one({'_id': game['_id']})
-        database.stats.update_one(
-            {'id': game['player'], 'chat': game['chat']},
-            {'$set': {'name': game['full_name']}, '$inc': inc_dict},
-            upsert=True
-        )
-
+        return gallows.gallows_suggestion(suggestion, game, user, message.message_id)
+    elif game['game'] == 'croco':
+        return croco.croco_suggestion(suggestion, game, user, message.message_id)
 
 @bot.group_message_handler()
 def default_handler(message, *args, **kwargs):

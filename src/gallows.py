@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+
 from .bot import bot
 from .database import database
 from . import lang
@@ -89,9 +90,6 @@ def end_game(game, game_result):
 
 
 def gallows_suggestion(suggestion, game, user, message_id):
-    if not game:
-        return
-
     if len(suggestion) > 1:
         if re.search(r'\b{}\b'.format(suggestion), game['word']):
             for ch in game['word']:
