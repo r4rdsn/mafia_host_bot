@@ -73,9 +73,16 @@ def end_game(game, game_result):
     stats = get_stats(game)
     set_gallows(game, result, ' '.join(list(game['word'])), stats=stats)
     for id, s in stats.items():
+        increments = {
+            'gallows.right': s['right'],
+            'gallows.wrong': s['wrong'],
+            'gallows.total': 1
+        }
+        if s['right']:
+            increments['gallows.win'] = 1
         database.stats.update_one(
-            {'id': id},
-            {'$inc': {'gallows.right': s['right'], 'gallows.wrong': s['wrong']}}
+            {'id': id, 'chat': game['chat']},
+            {'$inc': increments}
         )
     database.games.delete_one({'_id': game['_id']})
 

@@ -119,6 +119,15 @@ def stats_command(message, *args, **kwargs):
             answer += f'\nУгадано: {guesses}'
         paragraphs.append(answer)
 
+    if 'gallows' in stats:
+        right = stats['gallows'].get('right', 0)
+        wrong = stats['gallows'].get('wrong', 0)
+        win = stats['gallows'].get('win', 0)
+        total = stats['gallows']['total']
+        answer = f'Угадано букв в виселице: {right}/{right + wrong} ({100 * right // (right + wrong)}%)'
+        answer += f'\nПобед: {win}/{total} ({100 * win // total}%)'
+        paragraphs.append(answer)
+
     bot.send_message(message.chat.id, '\n\n'.join(paragraphs))
 
 
