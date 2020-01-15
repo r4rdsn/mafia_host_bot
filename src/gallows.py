@@ -115,6 +115,7 @@ def gallows_suggestion(suggestion, game, user, message_id):
         else:
             word_in_underlines.append('_')
 
+    bot.safely_delete_message(chat_id=game['chat'], message_id=message_id)
     game['names'][user['id']] = user['name']
 
     if has_letter:
@@ -137,5 +138,4 @@ def gallows_suggestion(suggestion, game, user, message_id):
         }
 
     database.games.update_one({'_id': game['_id']}, {'$set': update})
-    bot.safely_delete_message(chat_id=game['chat'], message_id=message_id)
     set_gallows(game, '', ' '.join(word_in_underlines))
