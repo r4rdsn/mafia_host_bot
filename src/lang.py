@@ -52,5 +52,5 @@ gallows = (
     '|\n'
     '|'
     '</code>\n'
-    '{result}Слово: {word}{attempts}'
+    '{result}\nСлово: {word}{attempts}{players}'
 )

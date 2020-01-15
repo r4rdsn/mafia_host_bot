@@ -209,15 +209,18 @@ def play_gallows(message, game, *args, **kwargs):
     word = croco.get_word()[:-2]
     sent_message = bot.send_message(
         message.chat.id,
-        lang.gallows.format(result='', word=' '.join(['_'] * len(word)), attempts='') % gallows.stickman[0],
+        lang.gallows.format(
+            result='', word=' '.join(['_'] * len(word)), attempts='', players=''
+        ) % gallows.stickman[0],
         parse_mode='HTML'
     )
     database.games.insert_one({
         'game': 'gallows',
         'chat': message.chat.id,
         'word': word,
-        'wrong': [],
-        'right': [],
+        'wrong': {},
+        'right': {},
+        'names': {},
         'message_id': sent_message.message_id
     })
 
@@ -974,7 +977,9 @@ def game_suggestion(message, game, *args, **kwargs):
         return
     suggestion = message.text.lower().replace('ё', 'е')
     if game['game'] == 'gallows':
-        gallows.gallows_suggestion(suggestion, game, message.message_id)
+        gallows.gallows_suggestion(
+            suggestion, game, user_object(message.from_user), message.message_id
+        )
         return
     elif game['game'] == 'croco' and re.search(r'\b{}\b'.format(game['word']), suggestion):
         inc_dict = {'croco.total': 1}

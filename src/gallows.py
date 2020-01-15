@@ -18,6 +18,7 @@ from .database import database
 from . import lang
 
 import re
+from enum import Enum, auto
 
 stickman = [
     ('', '', ''),
@@ -30,12 +31,28 @@ stickman = [
 ]
 
 
-def set_gallows(game, result, word):
+def get_stats(game):
+    stats = {int(id): {'name': name, 'right': 0, 'wrong': 0} for id, name in game['names'].items()}
+    for key in ('right', 'wrong'):
+        for user_id in game[key].values():
+            stats[user_id][key] += 1
+    return stats
+
+
+def set_gallows(game, result, word, stats=None):
+    if game['names']:
+        if stats is None:
+            stats = get_stats(game)
+        users = sorted(stats.values(), key=lambda s: s['right'], reverse=True)
+        players = '\n\n' + '\n'.join(f'{u["name"]}: ✔️{u["right"]} ❌{u["wrong"]}' for u in users)
+    else:
+        players = ''
     bot.edit_message_text(
         lang.gallows.format(
-            result=result + '\n',
+            result=result,
             word=word,
-            attempts='\nПопытки: ' + ', '.join(game['wrong']) if game['wrong'] else ''
+            attempts='\nПопытки: ' + ', '.join(game['wrong']) if game['wrong'] else '',
+            players=players
         ) % stickman[len(game['wrong'])],
         chat_id=game['chat'],
         message_id=game['message_id'],
@@ -43,18 +60,36 @@ def set_gallows(game, result, word):
     )
 
 
-def win_game(game):
-    set_gallows(game, 'Вы победили!', ' '.join(list(game['word'])))
+class GameResult(Enum):
+    WIN = auto()
+    LOSE = auto()
+
+
+def end_game(game, game_result):
+    if game_result == GameResult.WIN:
+        result = 'Вы победили!'
+    elif game_result == GameResult.LOSE:
+        result = 'Вы проиграли.'
+    stats = get_stats(game)
+    set_gallows(game, result, ' '.join(list(game['word'])), stats=stats)
+    for id, s in stats.items():
+        database.stats.update_one(
+            {'id': id},
+            {'$inc': {'gallows.right': s['right'], 'gallows.wrong': s['wrong']}}
+        )
     database.games.delete_one({'_id': game['_id']})
 
 
-def gallows_suggestion(suggestion, game, message_id):
+def gallows_suggestion(suggestion, game, user, message_id):
     if not game:
         return
 
     if len(suggestion) > 1:
         if re.search(r'\b{}\b'.format(suggestion), game['word']):
-            win_game(game)
+            for ch in game['word']:
+                if ch not in game['right']:
+                    game['right'][ch] = user['id']
+            end_game(game, GameResult.WIN)
         return
 
     if suggestion in game['wrong'] or suggestion in game['right']:
@@ -73,19 +108,27 @@ def gallows_suggestion(suggestion, game, message_id):
         else:
             word_in_underlines.append('_')
 
-    bot.safely_delete_message(chat_id=game['chat'], message_id=message_id)
+    game['names'][user['id']] = user['name']
 
     if has_letter:
+        game['right'][suggestion] = user['id']
         if word_in_underlines == word:
-            win_game(game)
+            end_game(game, GameResult.WIN)
             return
-        database.games.update_one({'_id': game['_id']}, {'$addToSet': {'right': suggestion}})
+        update = {
+            f'right.{suggestion}': user['id'],
+            f'names.{user["id"]}': user['name']
+        }
     else:
-        game['wrong'].append(suggestion)
+        game['wrong'][suggestion] = user['id']
         if len(game['wrong']) >= len(stickman) - 1:
-            set_gallows(game, 'Вы проиграли.', ' '.join(word))
-            database.games.delete_one({'_id': game['_id']})
+            end_game(game, GameResult.LOSE)
             return
-        database.games.update_one({'_id': game['_id']}, {'$addToSet': {'wrong': suggestion}})
+        update = {
+            f'wrong.{suggestion}': user['id'],
+            f'names.{user["id"]}': user['name']
+        }
 
+    database.games.update_one({'_id': game['_id']}, {'$set': update})
+    bot.safely_delete_message(chat_id=game['chat'], message_id=message_id)
     set_gallows(game, '', ' '.join(word_in_underlines))
