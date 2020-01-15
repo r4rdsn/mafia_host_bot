@@ -78,7 +78,7 @@ def end_game(game, game_result):
             'gallows.wrong': s['wrong'],
             'gallows.total': 1
         }
-        if s['right']:
+        if game_result == GameResult.WIN and s['right']:
             increments['gallows.win'] = 1
         database.stats.update_one(
             {'id': id, 'chat': game['chat']},
