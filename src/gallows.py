@@ -82,7 +82,8 @@ def end_game(game, game_result):
             increments['gallows.win'] = 1
         database.stats.update_one(
             {'id': id, 'chat': game['chat']},
-            {'$inc': increments}
+            {'$inc': increments},
+            upsert=True
         )
     database.games.delete_one({'_id': game['_id']})
 
