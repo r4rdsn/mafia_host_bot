@@ -90,6 +90,8 @@ def end_game(game, game_result):
 
 
 def gallows_suggestion(suggestion, game, user, message_id):
+    game['names'][user['id']] = user['name']
+
     if len(suggestion) > 1:
         if re.search(r'\b{}\b'.format(game['word']), suggestion):
             for ch in game['word']:
@@ -118,7 +120,6 @@ def gallows_suggestion(suggestion, game, user, message_id):
             word_in_underlines.append('_')
 
     bot.safely_delete_message(chat_id=game['chat'], message_id=message_id)
-    game['names'][user['id']] = user['name']
 
     if has_letter:
         game['right'][suggestion] = user['id']
