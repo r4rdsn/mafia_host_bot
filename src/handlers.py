@@ -982,7 +982,7 @@ def print_database(message, *args, **kwargs):
 
 @bot.group_message_handler(content_types=['text'])
 def game_suggestion(message, game, *args, **kwargs):
-    if not game or message.text is None or not all('А' <= ch <= 'я' for ch in message.text):
+    if not game or message.text is None:
         return
     suggestion = message.text.lower().replace('ё', 'е')
     user = user_object(message.from_user)

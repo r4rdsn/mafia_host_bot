@@ -91,11 +91,14 @@ def end_game(game, game_result):
 
 def gallows_suggestion(suggestion, game, user, message_id):
     if len(suggestion) > 1:
-        if re.search(r'\b{}\b'.format(suggestion), game['word']):
+        if re.search(r'\b{}\b'.format(game['word']), suggestion):
             for ch in game['word']:
                 if ch not in game['right']:
                     game['right'][ch] = user['id']
             end_game(game, GameResult.WIN)
+        return
+
+    if not 'А' <= suggestion <= 'я':
         return
 
     if suggestion in game['wrong'] or suggestion in game['right']:
