@@ -5,6 +5,24 @@
 Mafia Host can host party games of the famous mafia in groups or supergroups.
 
 
+# How to use
+Add [@mafia_host_bot](https://t.me/mafia_host_bot) to your group or supergroup, give it permission to delete messages and use commands listed below to create 
+and start the game.
+
+
+# Available commands
+* ```/create``` - create a request for a mafia game  
+* ```/cancel``` - delete a request for a mafia game  
+* ```/start``` - start a game from existing request  
+* ```/skip``` - create a voting to skip day discussion  
+* ```/end``` - create a voting to end the mafia game  
+* ```/croco``` - start crocodile game  
+* ```/gallows``` - start hangman game  
+* ```/stats``` - print statistics  
+* ```/rating``` - print rating  
+* ```/help``` - print help text
+
+
 # Rules 
 There are four roles in this version of Mafia Host:  
 * __Innocent__ - a player who doesn't have special abilities;  
@@ -27,9 +45,12 @@ the 3-minute-long common discussion. To turn it on, promote it to administrator 
 Rules of crocodile in this version of Mafia Host are similar to rules of the board game "Alias". Player has to explain a random noun in 2 minutes without using words with same root or derivatives. To say the word one should just type it in the chat.  
 
 
-# How to use
-Add [@mafia_host_bot](https://t.me/mafia_host_bot) to your group or supergroup, give it permission to delete messages and use commands listed below to create 
-and start the game.
+# Rules of hangman
+Players have to guess a random noun within 6 attempts by letters of which it is composed. To suggest the letter or the word one should just type it in the chat.
+
+
+# Rating
+Each game influences players' statistics, which rating comprises: 5 players of mafia and 3 players of crocodile. By default each player of winning team in mafia gets 1 point and each player of losing team in mafia loses 1 point; after each guessed word in crocodile player who was explaining the word gets 0.12 points and player who guessed the word gets 0.04 points.
 
 
 # Instruction for installation and startup on GNU/Linux server
@@ -44,14 +65,6 @@ and start the game.
 ```$ $EDITOR config.py``` (replacing ```$EDITOR``` with preferable text editor)
 * Start bot:  
 ```$ python mafia_host_bot```
-
-
-# Available commands
-* ```/create@mafia_host_bot``` - create a room for a game  
-* ```/cancel@mafia_host_bot``` - delete a room for a game  
-* ```/start@mafia_host_bot``` - start a game from existing room  
-* ```/croco``` - start crocodile game  
-* ```/help@mafia_host_bot``` - print help text
 
 
 # License
