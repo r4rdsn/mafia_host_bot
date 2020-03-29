@@ -95,19 +95,21 @@ def start_thread(name=None, target=None, *args, daemon=True, **kwargs):
     thread.start()
 
 
-app = flask.Flask(__name__)
+def create_app():
+    app = flask.Flask(__name__)
 
+    @app.route('/' + config.TOKEN, methods=['POST'])
+    def webhook():
+        if flask.request.headers.get('content-type') == 'application/json':
+            json_string = flask.request.get_data().decode('utf-8')
+            update = Update.de_json(json_string)
+            log_update(update)
+            bot.process_new_updates([update])
+            return ''
+        else:
+            flask.abort(403)
 
-@app.route('/' + config.TOKEN, methods=['POST'])
-def webhook():
-    if flask.request.headers.get('content-type') == 'application/json':
-        json_string = flask.request.get_data().decode('utf-8')
-        update = Update.de_json(json_string)
-        log_update(update)
-        bot.process_new_updates([update])
-        return ''
-    else:
-        flask.abort(403)
+    return app
 
 
 def main():
@@ -115,14 +117,17 @@ def main():
     start_thread('Removing Requests', remove_overtimed_requests)
     start_thread('Crocodile Cycle', croco_cycle)
 
-    bot.remove_webhook()
-    url = 'https://{}:{}/'.format(config.SERVER_IP, config.SERVER_PORT)
-    bot.set_webhook(url=url + config.TOKEN)
-
-    logger.debug(f'Запускаю приложение по адресу {url}')
-    app.run(
-        host=config.SERVER_IP,
-        port=config.SERVER_PORT,
-        ssl_context=(config.SSL_CERT, config.SSL_PRIV),
-        debug=False
-    )
+    if config.SET_WEBHOOK:
+        bot.remove_webhook()
+        url = f'https://{config.SERVER_IP}:{config.SERVER_PORT}/'
+        bot.set_webhook(url=url + config.TOKEN)
+        app = create_app()
+        logger.debug(f'Запускаю приложение по адресу {url}')
+        app.run(
+            host=config.SERVER_IP,
+            port=config.SERVER_PORT,
+            ssl_context=(config.SSL_CERT, config.SSL_PRIV),
+            debug=False
+        )
+    else:
+        bot.polling()
