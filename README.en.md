@@ -63,6 +63,7 @@ Each game influences players' statistics, which rating comprises: 5 players of m
 ```$ cp config.py.sample config.py```
 * Personalize file ```config.py```:  
 ```$ $EDITOR config.py``` (replacing ```$EDITOR``` with preferable text editor)
+* Install and start MongoDB server.
 * Start bot:  
 ```$ python mafia_host_bot```
 

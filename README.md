@@ -58,6 +58,7 @@
 ```$ cp config.py.sample config.py```
 * Персонализировать файл ```config.py```:  
 ```$ $EDITOR config.py``` (заменяя ```$EDITOR``` на предпочтительный текстовый редактор)
+* Установить и запустить сервер MongoDB.
 * Запустить бота:  
 ```$ python mafia_host_bot```
 
