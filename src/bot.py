@@ -37,21 +37,22 @@ class MafiaHostBot(TeleBot):
         def decorator(message, *args, **kwargs):
             game = database.games.find_one({'chat': message.chat.id})
             if game and game['game'] == 'mafia':
+                delete = False
                 try:
                     player = next(p for p in game['players'] if p['id'] == message.from_user.id)
                 except StopIteration:
-                    pass
+                    if config.DELETE_FROM_EVERYONE and game['stage'] not in (0, -4):
+                        delete = True
                 else:
-                    delete = False
                     if game['stage'] in (2, 7):
                         victim = game.get('victim')
                         if victim is not None and victim != message.from_user.id:
                             delete = True
                     elif not player.get('alive', True) or game['stage'] not in (0, -4):
                         delete = True
-                    if delete:
-                        self.safely_delete_message(chat_id=message.chat.id, message_id=message.message_id)
-                        return
+                if delete:
+                    self.safely_delete_message(chat_id=message.chat.id, message_id=message.message_id)
+                    return
 
             return handler(message, game, *args, **kwargs)
         return decorator
