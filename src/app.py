@@ -95,7 +95,7 @@ def start_thread(name=None, target=None, *args, daemon=True, **kwargs):
     thread.start()
 
 
-def create_app():
+def run_app():
     app = flask.Flask(__name__)
 
     @app.route('/' + config.TOKEN, methods=['POST'])
@@ -109,7 +109,12 @@ def create_app():
         else:
             flask.abort(403)
 
-    return app
+    app.run(
+        host=config.SERVER_IP,
+        port=config.SERVER_PORT,
+        ssl_context=(config.SSL_CERT, config.SSL_PRIV),
+        debug=False
+    )
 
 
 def main():
@@ -118,16 +123,10 @@ def main():
     start_thread('Crocodile Cycle', croco_cycle)
 
     if config.SET_WEBHOOK:
-        bot.remove_webhook()
         url = f'https://{config.SERVER_IP}:{config.SERVER_PORT}/'
-        bot.set_webhook(url=url + config.TOKEN)
-        app = create_app()
         logger.debug(f'Запускаю приложение по адресу {url}')
-        app.run(
-            host=config.SERVER_IP,
-            port=config.SERVER_PORT,
-            ssl_context=(config.SSL_CERT, config.SSL_PRIV),
-            debug=False
-        )
+        run_app()
+        bot.remove_webhook()
+        bot.set_webhook(url=url + config.TOKEN)
     else:
         bot.polling()
