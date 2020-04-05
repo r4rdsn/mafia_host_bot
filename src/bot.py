@@ -77,4 +77,4 @@ class MafiaHostBot(TeleBot):
             logger.error('Ошибка API при удалении сообщения', exc_info=True)
 
 
-bot = MafiaHostBot(config.TOKEN)
+bot = MafiaHostBot(config.TOKEN, skip_pending=config.SKIP_PENDING)
