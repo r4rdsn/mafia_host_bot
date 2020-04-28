@@ -15,4 +15,4 @@ if SET_WEBHOOK:  # Refer to https://core.telegram.org/bots/webhooks to learn how
     SSL_PRIV = '/root/cert/PRIVATE.key'  # File path of private key of SSL certificate
 
 import logging
-LOGGER_LEVEL = logging.DEBUG
+LOGGER_LEVEL = logging.INFO

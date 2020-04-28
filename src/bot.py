@@ -74,7 +74,7 @@ class MafiaHostBot(TeleBot):
         try:
             self.delete_message(*args, **kwargs)
         except ApiException:
-            logger.error('Ошибка API при удалении сообщения', exc_info=True)
+            logger.debug('Ошибка API при удалении сообщения', exc_info=True)
 
 
 bot = MafiaHostBot(config.TOKEN, skip_pending=config.SKIP_PENDING)
