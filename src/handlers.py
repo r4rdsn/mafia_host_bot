@@ -279,10 +279,7 @@ def take_card(call):
 
             player_game = database.games.find_one_and_update(
                 {'_id': player_game['_id']},
-                {'$set': {
-                    f'players.{player_index}.role': player_role,
-                    f'players.{player_index}.alive': True
-                }},
+                {'$set': {f'players.{player_index}.role': player_role}},
                 return_document=ReturnDocument.AFTER
             )
 
@@ -617,6 +614,7 @@ def request_interact(call):
                 return
 
             player_object = user_object(call.from_user)
+            player_object['alive'] = True
             increment_value = 1
             request_action = '$push'
             alert_message = 'Ты теперь в игре.'
@@ -674,6 +672,7 @@ def create(message, *args, **kwargs):
     )
 
     player_object = user_object(message.from_user)
+    player_object['alive'] = True
     request_overdue_time = time() + config.REQUEST_OVERDUE_TIME
 
     answer = lang.new_request.format(
