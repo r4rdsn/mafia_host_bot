@@ -211,7 +211,7 @@ def last_words_criminal(game):
             criminal = candidates[0]
 
     bot.edit_message_text(
-        f'Народным голосованием в тюрьму был посажен игрок {criminal+1}.'
+        f'Народным голосованием в тюрьму был посажен игрок {criminal+1} ({game["players"][criminal]["name"]}).'
         if criminal is not None else 'Город не выбрал преступника.',
         chat_id=game['chat'],
         message_id=game['message_id']
@@ -317,7 +317,7 @@ def last_words_victim(game):
         return
 
     bot.edit_message_text(
-        f'Доброе утро, город!\nПечальные новости: этой ночью был убит игрок {victim+1}',
+        f'Доброе утро, город!\nПечальные новости: этой ночью был убит игрок {victim+1} ({game["players"][victim]["name"]}).',
         chat_id=game['chat'],
         message_id=game['message_id']
     )
