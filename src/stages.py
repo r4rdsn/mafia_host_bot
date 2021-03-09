@@ -19,8 +19,8 @@ from .bot import bot
 from .database import database
 from .game import role_titles
 
-from time import time, sleep
-from threading import Thread
+import random
+from time import time
 from pymongo.collection import ReturnDocument
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from telebot.apihelper import ApiException
@@ -226,25 +226,6 @@ def last_words_criminal(game):
     database.games.update_one({'_id': game['_id']}, update_dict)
 
 
-def shooting(game):
-    keyboard = InlineKeyboardMarkup()
-    keyboard.add(
-        InlineKeyboardButton(
-            text='🔫 Выстрелить',
-            callback_data='shot'
-        )
-    )
-    for i, player in enumerate(game['players']):
-        if player['alive']:
-            bot.edit_message_text(
-                f'{i + 1}. {player["name"]}',
-                chat_id=game['chat'],
-                message_id=game['message_id'],
-                reply_markup=keyboard
-            )
-            sleep(2)
-
-
 @add_stage(3, 5)
 def night(game):
     message_id = bot.send_message(
@@ -260,9 +241,25 @@ def night(game):
     )
 
 
-@add_stage(4, lambda g: sum(p['alive'] for p in g['players']) * 2)
+@add_stage(4, 5)
 def shooting_stage(game):
-    Thread(target=shooting, args=(game,), daemon=True).start()
+    players = [(i, player) for i, player in enumerate(game['players']) if player['alive']]
+    random.shuffle(players)
+
+    keyboard = InlineKeyboardMarkup(row_width=8)
+    keyboard.add(
+        *[InlineKeyboardButton(
+            text=f'{i + 1}',
+            callback_data=f'shot {i + 1}'
+        ) for i, player in players]
+    )
+
+    bot.edit_message_text(
+        f'{role_titles["mafia"].capitalize()} выбирает жертву.\n' + format_roles(game),
+        chat_id=game['chat'],
+        message_id=game['message_id'],
+        reply_markup=keyboard
+    )
 
 
 @add_stage(5, 10)

@@ -924,7 +924,7 @@ def poll_vote(call):
     )
 
 
-@bot.callback_query_handler(func=lambda call: call.data == 'shot')
+@bot.callback_query_handler(func=lambda call: call.data.startswith('shot'))
 def callback_inline(call):
     player_game = database.games.find_one({
         'game': 'mafia',
@@ -938,7 +938,7 @@ def callback_inline(call):
     })
 
     if player_game and call.from_user.id not in player_game['played']:
-        victim = int(re.match(r'(\d+)\. .*', call.message.text).group(1)) - 1
+        victim = int(call.data.split()[1]) - 1
         database.games.update_one(
             {'_id': player_game['_id']},
             {
