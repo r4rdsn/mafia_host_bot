@@ -662,6 +662,10 @@ def create(message, *args, **kwargs):
     if existing_request:
         bot.send_message(message.chat.id, 'В этом чате уже есть игра!', reply_to_message_id=existing_request['message_id'])
         return
+    existing_game = database.games.find_one({'chat': message.chat.id, 'game': 'mafia'})
+    if existing_game:
+        bot.send_message(message.chat.id, 'В этом чате уже идёт игра!')
+        return
 
     keyboard = InlineKeyboardMarkup()
     keyboard.add(
