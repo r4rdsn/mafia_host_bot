@@ -91,6 +91,10 @@ def cards_not_taken(game):
 
 @add_stage(-2, 60)
 def set_order(game):
+    if not any(p['role'] == 'mafia' for p in game['players']):
+        go_to_next_stage(game, inc=2)
+        return
+
     keyboard = InlineKeyboardMarkup(row_width=8)
     keyboard.add(
         *[InlineKeyboardButton(
